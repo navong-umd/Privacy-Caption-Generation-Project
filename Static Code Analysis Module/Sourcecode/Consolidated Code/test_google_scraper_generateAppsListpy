@@ -1,0 +1,98 @@
+import os
+import time
+import pandas as pd
+from datetime import datetime
+from tabulate import tabulate
+from google_play_scraper import list as gp_list  # [web:1]
+
+# ---------- Config ----------
+OUTPUT_FOLDER = r"C:\Users\2015n\OneDrive\Desktop\Privacy Policy Generation Project\Static Code Analysis Module\output"
+COUNTRY = "kh"
+LANG = "en"
+TARGET_UNIQUE = 1000
+
+# Pull up to 200 per category
+PER_CATEGORY = 200
+
+# Categories (google_play_scraper enums, but can also be strings) [web:1]
+CATEGORIES = [
+    "APPLICATION",
+    "TOOLS", "PRODUCTIVITY", "COMMUNICATION", "SOCIAL", "VIDEO_PLAYERS",
+    "MUSIC_AND_AUDIO", "ENTERTAINMENT", "PHOTOGRAPHY", "FINANCE",
+    "SHOPPING", "BUSINESS", "EDUCATION", "HEALTH_AND_FITNESS",
+    "NEWS_AND_MAGAZINES", "MAPS_AND_NAVIGATION", "TRAVEL_AND_LOCAL",
+    "FOOD_AND_DRINK", "LIFESTYLE", "HOUSE_AND_HOME", "PERSONALIZATION",
+    "BOOKS_AND_REFERENCE", "WEATHER", "SPORTS", "DATING",
+    "FAMILY", "PARENTING", "EVENTS", "AUTO_AND_VEHICLES", "MEDICAL",
+    "GAME", "GAME_CASUAL", "GAME_PUZZLE", "GAME_ACTION", "GAME_ARCADE",
+]
+
+run_date_utc = datetime.utcnow().strftime("%Y-%m-%d")
+
+seen = set()
+rows = []
+
+for cat in CATEGORIES:
+    # google_play_scraper.list returns a list of dicts [web:1]
+    apps = gp_list(
+        collection="TOP_FREE",   # can also use Collection.TOP_FREE
+        category=cat,            # or Category.TOOLS etc.
+        lang=LANG,
+        country=COUNTRY.upper(),
+        num=PER_CATEGORY,
+        # By default, 'url' is not included – we will synthesize it below.
+    )
+
+    for rank_in_cat, item in enumerate(apps, start=1):
+        app_id = item.get("appId")
+        if not app_id or app_id in seen:
+            continue
+
+        seen.add(app_id)
+
+        # Add fields to match your previous structure
+        item["rank_in_category"] = rank_in_cat
+        item["source_category"] = cat
+        item["country"] = COUNTRY.upper()
+        item["run_date_utc"] = run_date_utc
+
+        # google_play_scraper does not return 'url' directly, so construct it. [web:1]
+        item["url"] = f"https://play.google.com/store/apps/details?id={app_id}&hl={LANG}&gl={COUNTRY.upper()}"
+
+        # Some field names differ slightly; for robustness, map/sanitize here if needed.
+        # google_play_scraper list item keys commonly include: [web:1]
+        # 'title', 'appId', 'developer', 'score', 'scoreText', 'installs',
+        # 'free', 'price', 'currency', 'genre', 'ratings', 'reviews', etc.
+
+        rows.append(item)
+
+        if len(seen) >= TARGET_UNIQUE:
+            break
+
+    if len(seen) >= TARGET_UNIQUE:
+        break
+
+    # small pause to be polite to the endpoint
+    time.sleep(0.5)
+
+df = pd.DataFrame(rows)
+
+# Create a stable global rank = order of collection (not a true Play “overall” rank)
+df.insert(0, "rank", range(1, len(df) + 1))
+
+keep_cols = [
+    "rank", "rank_in_category", "source_category",
+    "appId", "title", "developer",
+    "score", "ratings", "reviews", "installs",
+    "genre", "free", "price", "currency",
+    "url", "country", "run_date_utc"
+]
+df_out = df[[c for c in keep_cols if c in df.columns]].copy()
+
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+out_filename = f"top_free_{COUNTRY}_merged_{len(df_out)}_{run_date_utc}.csv"
+output_path = os.path.join(OUTPUT_FOLDER, out_filename)
+df_out.to_csv(output_path, index=False, encoding="utf-8")
+
+print(f"[✓] Saved {len(df_out)} unique apps to: {output_path}")
+print(tabulate(df_out.head(10), headers="keys", tablefmt="grid", showindex=False))

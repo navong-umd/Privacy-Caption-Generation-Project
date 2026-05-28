@@ -1,0 +1,90 @@
+Read me
+
+Document Analysis:
+I. Input: Official API Description, Method name, Class name
+How to get the input from Source code (APK Package)?
+
+
+II. Methodology
+1. Sensitive APIs Selection
+Susi [16]: S. Rasthofer, S. Arzt, and E. Bodden, “A machine-learning approach for classifying and categorizing Android sources and sinks,” in Proc. NDSS, 2014, pp. 1–15.
+List of selected 79 APIs (APIs' signature(classname, type return value, methodname, type of parameter) and official descriptions
+https://github.com/secure-software-engineering/SuSi
+
+Issue: Sensitive APIs Selection (Manually) 
+How AutoPPG selected 79 APIs, 6 Permission with 160 URI fields and
+PPChecker selected 152 APIs, 12 Permission with 615 URI fields.
+
+Source
+Category: UNIQUE_IDENTIFIER:
+<Class Name: Return Type	Method Name	Parameter Types>	(Description / Category)
+<com.android.internal.telephony.cdma.CDMAPhone: java.lang.String getDeviceId()> (UNIQUE_IDENTIFIER)
+
+Sink
+Category: LOCATION_INFORMATION:
+<Class Name	Return Type	Method Name	Parameter Types>	(Description / Category)
+<android.location.ILocationManager$Stub$Proxy: void clearTestProviderEnabled(java.lang.String)> (LOCATION_INFORMATION)
+
+PScout [17] K. Au, Y. Zhou, Z. Huang, and D. Lie, “Pscout: Analyzing the Android permission specification,” in Proc. CCS, 2012, pp. 217–228.
+Content providers: "content://contact"
+List 6 permissions including 160 URI
+
+2.Pre-processing
+2.1 Extract P.I. from Method Name
+Susi [16]: S. Rasthofer, S. Arzt, and E. Bodden, “A machine-learning approach for classifying and categorizing Android sources and sinks,” in Proc. NDSS, 2014, pp. 1–15.
+https://github.com/secure-software-engineering/SuSi
+To remove verb prefix (get, read) and convert to lowercase
+
+Implement NLTK: To remove stop word "ALL" etc using NLTK and then divide text into sentences
+https://pythonspot.com/nltk-stop-words/
+
+2.2 Extract P.I. from Class name
+android.hardware.Camera
+Packagename + Classname
+android.hardware + Camera
+turn class name into a list
+
+2.3 Syntactic Analysis on API Description
+Input: selective API Description
+Stanford Parser [15] D. Cer, M. Marneffe, D. Jurafsky, and C. Manning, “Parsing to Stanford dependencies: Trade-offs between speed and accuracy,” in Proc. LREC, 2010, pp. 1–5.
+Popular syntactic analysis tools [19] [20]
+[19] J. Cowie and W. Lehnert, “Information extraction,” Commun. ACM, vol. 39, no. 1, pp. 80–91, 1996.
+[20] Y. Xu, M.-Y. Kim, K. Quinn, R. Goebel, and D. Barbosa, “Open information extraction with tree kernels,” in Proc. HLT-NAACL, 2013, pp. 868–877.
+Used Stanford Parser [15] and Popular syntactic analysis tools [19] [20] to construct sentence tree:
+Output: Sentences' phrase structure tree (desc-tree) and typed dependency information (desc-dept)
+
+3. Personal Information Extraction (Algorithm 1)
+Input: Sentences' phrase structure tree (desc-tree) and typed dependency information (desc-dept)
+Used Personal Information Extraction from Method name and class name as reference
+root=ExtractRoot(desc-dept)
+obj=ExtractObj(desc-dept)
+
+3* Determine if additional postpositive attributives need to be add after direct object:
+simValue (line 12) by using Explicit Semantic Analysis
+
+[21] E. Gabrilovich and S. Markovitch, “Computing semantic relatedness using wikipedia-based explicit semantic analysis,” in Proc. IJCAI, 2007, pp. 1–16.
+
+**Finally Output**
+API to Personal Information (Group them by Personal Information)
+
+Sample:
+Input:
+desc = "Returns a list of application processes that are running on the device."
+name_method = "getRunningAppProcesses"
+name_class = "ActivityManager"
+
+Output:
+Extracted Info: list of application processes
+
+
+***Note
+Susi [16]
+
+Definition 2 (Resource Method): A resource method reads data from or writes data to a shared resource.
+For instance, the operating system method for reading the IMEI (getDeviceId() in class TelephonyManager) is a resource method.
+
+Definition 3 (Android Source): Sources are calls into resource methods returning non-constant values into the application code.
+The getDeviceId() resource method is an Android source. It returns a value (the IMEI) into the application code. The IMEI is considered non-constant as the method returns a different value on every phone. 
+
+Definition 4 (Android Sinks): Sinks are calls into resource methods accepting at least one non-constant data value from the application code as parameter, if and only if a new value is written or an existing one is overwritten on the resource.
+The sendTextMessage() resource method is an Android sink as both the message text and the phone number it receives are possibly non-constant.

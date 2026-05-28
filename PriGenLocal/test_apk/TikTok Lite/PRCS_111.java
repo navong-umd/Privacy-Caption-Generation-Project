@@ -1,0 +1,96 @@
+/*Application Package Name: com.tiktok.lite.go
+class PRCS_111 {
+/**
+X.0cD;L(Landroid/net/ConnectivityManager;)Landroid/net/NetworkInfo;
+*/
+
+    public static android.net.NetworkInfo L(android.net.ConnectivityManager p18)
+    {
+        try {
+            com.bytedance.helios.statichook.api.HeliosApiHook v3_1 = new com.bytedance.helios.statichook.api.HeliosApiHook();
+            Object[] v9 = new Object[0];
+            com.bytedance.helios.statichook.api.ExtraInfo v10_1 = new com.bytedance.helios.statichook.api.ExtraInfo(0, "()Landroid/net/NetworkInfo;", "dzBzEgAjS8/YVFkiQFyHacu2SzYe/7zTjpfgl8thoe1CgUDWai5Rr1Y=");
+            com.bytedance.helios.statichook.api.Result v1_0 = v3_1.preInvoke(183, "android/net/ConnectivityManager", "getActiveNetworkInfo", p18, v9, "android.net.NetworkInfo", v10_1);
+        } catch (android.net.NetworkInfo v0_3) {
+            v0_3.printStackTrace();
+            return X.1Mw.L();
+        }
+        if (!v1_0.intercept) {
+            android.net.NetworkInfo v4_0 = p18.getActiveNetworkInfo();
+            v3_1.postInvoke(v4_0, 183, "android/net/ConnectivityManager", "getActiveNetworkInfo", p18, v9, v10_1, 1);
+            return v4_0;
+        } else {
+            v3_1.postInvoke(0, 183, "android/net/ConnectivityManager", "getActiveNetworkInfo", p18, v9, v10_1, 0);
+            return ((android.net.NetworkInfo) v1_0.returnValue);
+        }
+    }
+
+/**
+X.0cD;LB(Landroid/net/ConnectivityManager;)Landroid/net/NetworkInfo;
+*/
+
+    public static android.net.NetworkInfo LB(android.net.ConnectivityManager p3)
+    {
+        try {
+            System.nanoTime();
+        } catch (android.net.NetworkInfo v0_20) {
+            X.5If.L(v0_20);
+            return X.0cD.L(p3);
+        }
+        if (X.5uK.LB().L) {
+            if ((X.75K.L()) || (X.5uK.LB().LB)) {
+                if (X.5uV.L()) {
+                    if ((X.5uC.L == null) || ((!X.5uC.L.isConnected()) || (!X.5uC.L.isAvailable()))) {
+                        X.5uC.L = X.0cD.L(p3);
+                        return X.5uC.L;
+                    } else {
+                        if (X.5uO.L) {
+                            X.5uQ.L("cm_net_info", X.0cD.L(p3).toString(), X.5uC.L.toString());
+                        }
+                        return X.5uC.L;
+                    }
+                } else {
+                    X.5uC.L = 0;
+                    return X.0cD.L(p3);
+                }
+            } else {
+                return X.0cD.L(p3);
+            }
+        } else {
+            return X.0cD.L(p3);
+        }
+    }
+
+/**
+X.0cD;L(Landroid/content/Context;)Z
+*/
+
+    public static boolean L(android.content.Context p5)
+    {
+        try {
+            android.net.NetworkInfo v3 = X.0cD.LB(((android.net.ConnectivityManager) p5.getSystemService("connectivity")));
+        } catch (Exception) {
+            return 0;
+        }
+        if ((v3 == null) || (!v3.isAvailable())) {
+            return 0;
+        } else {
+            X.0cB v0_1 = X.0cD.L;
+            if ((v0_1 == null) || (v0_1.L() == X.0cB.NONE)) {
+                if (1 != X.0cD.L(v3, "dzBzEgAjS8/YVFkiQFyHacu2SzYe/7zTjpfgl8thoe1CgUDWai5Rr1Y=")) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else {
+                if (X.0cD.L.L() != X.0cB.WIFI) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        }
+    }
+
+
+}

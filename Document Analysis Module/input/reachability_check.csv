@@ -1,0 +1,39 @@
+sensitive_target,category,label,reachable,via_entry_point,path_length,path
+android.content.ClipboardManager->getPrimaryClip,Clipboard,Clipboard.getPrimaryClip,Feasible,getClip,1,getClip -> android.content.ClipboardManager->getPrimaryClip
+android.content.ContentResolver->query,ContentProvider,ContentResolver,Feasible,zzb,1,zzb -> android.content.ContentResolver->query
+android.content.Intent->setData,URI,Intent.setData,Feasible,createManageUnusedAppRestrictionsIntent,1,createManageUnusedAppRestrictionsIntent -> android.content.Intent->setData
+android.hardware.camera2.CameraCaptureSession$StateCallback-><init>,Camera,Camera2,Feasible,<init>,1,<init> -> android.hardware.camera2.CameraCaptureSession$StateCallback-><init>
+android.hardware.camera2.CameraCaptureSession$StateCallback->onActive,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraCaptureSession$StateCallback->onActive
+android.hardware.camera2.CameraCaptureSession$StateCallback->onClosed,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraCaptureSession$StateCallback->onClosed
+android.hardware.camera2.CameraCaptureSession$StateCallback->onConfigureFailed,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraCaptureSession$StateCallback->onConfigureFailed
+android.hardware.camera2.CameraCaptureSession$StateCallback->onConfigured,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraCaptureSession$StateCallback->onConfigured
+android.hardware.camera2.CameraCaptureSession$StateCallback->onReady,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraCaptureSession$StateCallback->onReady
+android.hardware.camera2.CameraDevice$StateCallback-><init>,Camera,Camera2,Feasible,<init>,1,<init> -> android.hardware.camera2.CameraDevice$StateCallback-><init>
+android.hardware.camera2.CameraDevice$StateCallback->onClosed,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraDevice$StateCallback->onClosed
+android.hardware.camera2.CameraDevice$StateCallback->onDisconnected,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraDevice$StateCallback->onDisconnected
+android.hardware.camera2.CameraDevice$StateCallback->onError,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraDevice$StateCallback->onError
+android.hardware.camera2.CameraDevice$StateCallback->onOpened,Camera,Camera2,Feasible,run,1,run -> android.hardware.camera2.CameraDevice$StateCallback->onOpened
+android.location.LocationManager->getLastKnownLocation,Location,LocationManager,Feasible,getCurrentLocation,1,getCurrentLocation -> android.location.LocationManager->getLastKnownLocation
+android.location.LocationManager->requestLocationUpdates,Location,LocationManager,Feasible,getCurrentLocation,1,getCurrentLocation -> android.location.LocationManager->requestLocationUpdates
+android.net.Uri->parse,URI,Uri.parse,Feasible,parseUri,1,parseUri -> android.net.Uri->parse
+android.provider.DocumentsContract->buildChildDocumentsUri,ContentProvider,AndroidProviderAPI,Feasible,buildChildDocumentsUri,1,buildChildDocumentsUri -> android.provider.DocumentsContract->buildChildDocumentsUri
+android.provider.DocumentsContract->buildChildDocumentsUriUsingTree,ContentProvider,AndroidProviderAPI,Feasible,buildChildDocumentsUriUsingTree,1,buildChildDocumentsUriUsingTree -> android.provider.DocumentsContract->buildChildDocumentsUriUsingTree
+android.provider.DocumentsContract->buildDocumentUri,ContentProvider,AndroidProviderAPI,Feasible,buildDocumentUri,1,buildDocumentUri -> android.provider.DocumentsContract->buildDocumentUri
+android.provider.DocumentsContract->buildDocumentUriUsingTree,ContentProvider,AndroidProviderAPI,Feasible,fromTreeUri,1,fromTreeUri -> android.provider.DocumentsContract->buildDocumentUriUsingTree
+android.provider.DocumentsContract->buildTreeDocumentUri,ContentProvider,AndroidProviderAPI,Feasible,buildTreeDocumentUri,1,buildTreeDocumentUri -> android.provider.DocumentsContract->buildTreeDocumentUri
+android.provider.DocumentsContract->createDocument,ContentProvider,AndroidProviderAPI,Feasible,createFile,1,createFile -> android.provider.DocumentsContract->createDocument
+android.provider.DocumentsContract->deleteDocument,ContentProvider,AndroidProviderAPI,Feasible,delete,1,delete -> android.provider.DocumentsContract->deleteDocument
+android.provider.DocumentsContract->getDocumentId,ContentProvider,AndroidProviderAPI,Feasible,getDocumentId,1,getDocumentId -> android.provider.DocumentsContract->getDocumentId
+android.provider.DocumentsContract->getTreeDocumentId,ContentProvider,AndroidProviderAPI,Feasible,fromTreeUri,1,fromTreeUri -> android.provider.DocumentsContract->getTreeDocumentId
+android.provider.DocumentsContract->isDocumentUri,ContentProvider,AndroidProviderAPI,Feasible,isDocumentUri,1,isDocumentUri -> android.provider.DocumentsContract->isDocumentUri
+android.provider.DocumentsContract->isTreeUri,ContentProvider,AndroidProviderAPI,Feasible,isTreeUri,1,isTreeUri -> android.provider.DocumentsContract->isTreeUri
+android.provider.DocumentsContract->removeDocument,ContentProvider,AndroidProviderAPI,Feasible,removeDocument,1,removeDocument -> android.provider.DocumentsContract->removeDocument
+android.provider.DocumentsContract->renameDocument,ContentProvider,AndroidProviderAPI,Feasible,renameTo,1,renameTo -> android.provider.DocumentsContract->renameDocument
+android.provider.MediaStore->getPickImagesMaxLimit,ContentProvider,AndroidProviderAPI,Feasible,<init>,2,<init> -> getMaxItems$activity_release -> android.provider.MediaStore->getPickImagesMaxLimit
+android.provider.Settings$Global->getFloat,ContentProvider,AndroidProviderAPI,Feasible,invokeSuspend,1,invokeSuspend -> android.provider.Settings$Global->getFloat
+android.provider.Settings$Global->getUriFor,ContentProvider,AndroidProviderAPI,Feasible,invokeSuspend,3,invokeSuspend -> access$getAnimationScaleFlowFor -> getAnimationScaleFlowFor -> android.provider.Settings$Global->getUriFor
+android.provider.Settings$Secure->getString,ContentProvider,AndroidProviderAPI,Feasible,handleMessage,4,handleMessage -> handleQueueTask -> updateListenerMap -> getEnabledListenerPackages -> android.provider.Settings$Secure->getString
+android.provider.Settings$System->getInt,ContentProvider,AndroidProviderAPI,Feasible,getShowPassword,1,getShowPassword -> android.provider.Settings$System->getInt
+android.provider.Settings$System->getUriFor,ContentProvider,AndroidProviderAPI,Feasible,invoke,3,invoke -> $r8$lambda$jL8k68I_4mpGPG388rNyJYXIlgU -> platformAllowsRevealLastTyped$lambda$7$lambda$6 -> android.provider.Settings$System->getUriFor
+android.telephony.TelephonyManager->getDeviceId,Identifiers,getDeviceId,Feasible,getImei,1,getImei -> android.telephony.TelephonyManager->getDeviceId
+android.telephony.TelephonyManager->getImei,Identifiers,getImei,Feasible,getImei,1,getImei -> android.telephony.TelephonyManager->getImei
