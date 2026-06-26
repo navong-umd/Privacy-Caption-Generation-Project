@@ -22,4 +22,13 @@
 - Ran on synthetic fixture: **12 sources, 12 sinks, 12 taint paths** (incl. 1 inter-procedural,
   4 hops). Outputs: PPG_nodes.csv/PPG_edges.csv (schema-checked), ppg.graphml, ppg.pkl.
 - **Tests:** `tests/test_stage4_ppg.py` — 8 passed (APG loader, catalogs, taint, CSV schema, overlay, serialization).
-- **Status:** done. **Commit:** (Phase 0+A boundary).
+- **Status:** done. **Commit:** Phase 0+A boundary.
+
+## Phase B — PRCS extraction
+- `step2_prcs/extract_prcs.py`: per source→sink flow, slice the subgraph of every method on the
+  path (all statements + intra/inter edges + privacy overlay). Emits `<prcs_id>.json` + `prcs_index.csv`.
+- Ran on the PPG: **12 PRCS**; inter-procedural one spans 2 methods (12 nodes), subgraph carries
+  all 7 edge types incl. TAINT_FLOW + PRIVACY_RELATION; readable per-method code snippet.
+- **Tests:** `tests/test_step2_prcs.py` — 5 passed (counts, fields/subgraph, inter-procedural,
+  deterministic id, index CSV + JSON roundtrip). **Suite: 13 passed.**
+- **Status:** done.
