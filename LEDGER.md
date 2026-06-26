@@ -106,5 +106,15 @@
 - `HANDOFF_G4.md` (Androzoo); `FINAL_REPORT.md`; PROJECT.md progress tracker finalized.
 - **Tests:** `tests/test_pipeline_e2e.py` — 1 passed (fixture → policy+eval, all artifacts on disk).
 - **Full suite: 43 passed, 81% coverage** (uncovered = APK adapter + Neo4j loader: external-resource paths).
-- Real-APK smoke (sample.apk via androguard) attempted — see follow-up note.
 - **Status:** done.
+
+## Follow-up — Real-APK validation (sample.apk = F-Droid client)
+- Adapter ran on bundled `sample.apk` → `org.fdroid.fdroid` APG: 18,427 classes / 98,724 methods /
+  1,528,774 statements / 413,897 calls / 1,509,885 ICFG / 286,602 DDG (androguard ~ minutes).
+- PPG built on it: **206 sources, 11,639 sinks, 632,178 taint paths, 1.66M nodes, 4.32M edges**;
+  real example flow `ConnectivityMonitorService.getNetworkState → okhttp3.RealConnection` (8 hops).
+- **Fixed real-data bug:** smali strings contain XML-illegal chars → lxml GraphML crash. Now write
+  pickle first + codepoint-sanitize + try/except guard. (Only surfaces on real APKs.)
+- **Found + mitigated taint over-generation:** added `dedup_by_method` (default) → 632K → 235K
+  paths (-63%); `max_paths_per_source` + `follow_icfg:false` available for further pruning. FINDINGS §I.
+- Suite still **43 passed** (defaults are no-ops on the fixture).

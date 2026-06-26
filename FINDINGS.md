@@ -101,3 +101,7 @@
   shortest paths per source; (d) require the sink to be data-dependent on the source (DDG-only),
   not merely ICFG-reachable. These are precision knobs, not correctness fixes — the over-approx is
   intentional for recall but must be tightened before mass PRCS extraction (ties into G4 scale-out).
+- **Mitigation quantified:** enabling `dedup_by_method` (one path per source/sink method pair) cut
+  F-Droid from **632,178 → 235,304 paths (-63%)** with no loss of distinct method-level flows.
+  Adding `max_paths_per_source: 25` bounds it to <= 206x25 ~ 5,150, and `follow_icfg:false` trims
+  further toward DDG-only data flows — composed, these yield a PRCS count suitable for annotation.
