@@ -138,7 +138,8 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
         sub = G.subgraph(node_ids)
         nodes = [{"id": n, **{k: G.nodes[n].get(k) for k in
                               ("label", "type", "callee", "code", "is_source", "is_sink",
-                               "pi_type", "permission", "sink_type", "privacy_threat")
+                               "pi_type", "category", "permission", "sink_type",
+                               "sink_label", "privacy_threat")
                               if k in G.nodes[n]}} for n in sub.nodes()]
         edges = [{"start": u, "end": v, "type": k} for u, v, k in sub.edges(keys=True)]
 

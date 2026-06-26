@@ -1,0 +1,24 @@
+# ConvGNN (Phase D) configuration. EDITABLE.
+
+model:
+  type_embed_dim: 16        # learned embedding for node type
+  hidden_dim: 64
+  num_layers: 3             # RGCN layers
+  dropout: 0.3
+  readout: attention        # attention | mean
+  conv: rgcn                # rgcn (relation-aware)
+
+train:
+  seed: 13
+  epochs: 60
+  lr: 0.005
+  weight_decay: 0.0005
+  batch_size: 16
+  pos_weight: true          # class-imbalance weighting in BCE
+  early_stopping_patience: 15
+  monitor: val_macro_f1     # metric to checkpoint/early-stop on
+  num_workers: 0
+
+paths:
+  dataset_dir: data/dataset
+  out_dir: data/convgnn     # checkpoints + metrics.csv + train_log.csv

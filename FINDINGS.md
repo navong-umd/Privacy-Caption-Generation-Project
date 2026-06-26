@@ -55,3 +55,24 @@
   "helper returns PI, caller ships it" pattern (validated by the synthetic inter-procedural flow).
 - **Heuristic unknown-sink detection** (external callee + egress verb in method name) is required by
   the plan to catch sinks outside the catalog; kept configurable in `sinks.yaml`.
+
+## §C — ADPPG dataset
+- **Leakage-free splits must group by APK**, not by PRCS — flows from one app share SDK code and
+  structure, so a random PRCS split would inflate metrics. With <3 apps the split is degenerate
+  (handled: large fixture has 8 apps → real 36/6/6).
+- The WEAK labeler is a near-deterministic function of (sink_type, SDK package). That means a GNN
+  can essentially *memorize* it — which is exactly why bootstrap metrics are high yet meaningless,
+  and why the BOOTSTRAP banner is non-negotiable until G1.
+
+## §D — ConvGNN
+- **HeteroData vs. homogeneous+edge_type:** chose homogeneous `Data` with an integer `edge_type`
+  and `RGCNConv(num_relations)`. PRCS graphs are small/sparse (≈8–12 nodes, 7 relation types);
+  HeteroData would add per-type message-passing plumbing for no accuracy gain at this scale. RGCN
+  over typed edges preserves relation-awareness. (Deviation from the literal HeteroData ask, justified.)
+- **Feature layout is fixed & documented** (type embedding ⊕ [is_source,is_sink,permission,
+  sink-type 1-hot, PI-category 1-hot, 8-dim zero token-hook]) so a future statement-token encoder
+  drops into the reserved slot without reshaping the model.
+- **pos_weight matters** even on the bootstrap: Practice labels are imbalanced (Sharing≈⅔,
+  Other≈0); clamping pos_weight to [0.1,10] keeps BCE stable on tiny batches.
+- Bootstrap result (WEAK, not real): practice micro-F1 0.97 / macro-F1 0.71; purpose 0.86 / 0.62.
+  High micro-F1 reflects the GNN learning the heuristic, not real privacy semantics.

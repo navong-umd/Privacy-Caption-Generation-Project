@@ -43,3 +43,16 @@
 - **Tests:** `tests/test_step2_dataset.py` — 7 passed (weak rules, outputs, leakage-free splits,
   multihot CSV, Codr shape). **Suite: 20 passed.**
 - **Status:** done (build-around complete; real labels await human Codr — G1).
+
+## Phase D — ConvGNN (Gate G2 for metrics)
+- `step2_convgnn/`: `data.py` (PRCS subgraph → PyG Data, type embedding + privacy features +
+  token-embedding hook), `model.py` (RGCN + attention readout + 2 multi-label heads),
+  `metrics.py` (per-label P/R/F1, micro/macro F1, subset acc), `train.py` (deterministic,
+  BCEWithLogits + pos_weight, early stopping, checkpoint, CSV logs, BOOTSTRAP banner).
+- Installed torch 2.12.1 + torch-geometric 2.8.0 + scikit-learn 1.9.0 (Py3.14 wheels).
+- **Live training run** on 8-app bootstrap (48 PRCS, 36/6/6 split): early-stopped @45;
+  **[BOOTSTRAP]** practice micro_f1=0.97 macro_f1=0.71 subset_acc=0.83; purpose micro_f1=0.86
+  macro_f1=0.62 subset_acc=0.67. Wrote best.pt + metrics.csv (with BANNER row) + train_log.csv.
+- `HANDOFF_G2.md` written. **Tests:** `tests/test_step2_convgnn.py` — 3 passed (shapes, forward,
+  end-to-end training). **Suite: 23 passed.**
+- **Status:** done (real metrics await G1 human labels).
