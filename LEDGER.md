@@ -76,3 +76,15 @@
 - **Tests:** `tests/test_step3_policy.py` — 4 passed (per-app docs, GDPR/CCPA mapping, draft banner,
   recipients). **Suite: 33 passed.**
 - **Status:** done.
+
+## Phase G — Evaluation harness
+- `step4_eval/text_metrics.py` (self-contained smoothed BLEU-4 + ROUGE-L), `evaluate.py`
+  (classification via trained ConvGNN + caption BLEU/ROUGE-if-references + policy completeness;
+  emits caption_rating_sheet.csv + eval_report.json/md, BOOTSTRAP-gated).
+- Honesty: caption BLEU/ROUGE only computed against real references — with none it says
+  "no references" and emits a human rating sheet (no fabricated scores). Policy completeness is a
+  real structural check (overall=1.0 on fixture).
+- Ran on 8-app artifacts (+ trained checkpoint): classification banner-gated, completeness 1.0.
+- **Tests:** `tests/test_step4_eval.py` — 7 passed (metric bounds, no-ref + with-ref caption eval,
+  completeness, classification skip + with-checkpoint, full report banner). **Suite: 40 passed.**
+- **Status:** done (real caption/classification numbers await G1).
