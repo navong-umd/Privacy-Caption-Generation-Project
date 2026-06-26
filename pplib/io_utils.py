@@ -87,3 +87,32 @@ def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def load_dotenv(path: str | Path = ".env", override: bool = False) -> List[str]:
+    """Load KEY=VALUE pairs from a .env into os.environ. Returns the KEY NAMES only.
+
+    Values are never returned or logged (they are secrets). Existing env vars win
+    unless override=True.
+    """
+    p = Path(path)
+    if not p.exists():
+        return []
+    names: List[str] = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.strip()
+        v = v.strip().strip('"').strip("'")
+        if override or k not in os.environ:
+            os.environ[k] = v
+        names.append(k)
+    return names
+
+
+def redact(text: str) -> str:
+    """Mask apikey=... query params so secrets never reach logs/output."""
+    import re
+    return re.sub(r"(apikey=)[^&\s]+", r"\1***", text)

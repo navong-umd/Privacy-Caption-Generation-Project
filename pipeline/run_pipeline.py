@@ -15,7 +15,9 @@ import argparse
 from pathlib import Path
 from typing import Dict, Optional
 
-from pplib.io_utils import ensure_dir, get_logger
+import yaml
+
+from pplib.io_utils import ensure_dir, get_logger, load_yaml
 from stage4_ppg.build_ppg import build_ppg
 from step2_prcs.extract_prcs import extract_prcs
 from step2_dataset.build_dataset import build_dataset
@@ -27,9 +29,22 @@ from step4_userstudy.build_study import build_study
 log = get_logger("pipeline")
 
 
+def _precision_config(ppg_config: str, out: Path) -> str:
+    """Write a derived PPG config tuned for precision on large real APKs."""
+    cfg = load_yaml(ppg_config)
+    cfg.setdefault("taint", {})
+    cfg["taint"]["follow_icfg"] = False        # DDG-only data flow (precision)
+    cfg["taint"]["max_paths_per_source"] = 25  # bound the per-source explosion
+    derived = out / "ppg.precision.yaml"
+    with open(derived, "w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+    return str(derived)
+
+
 def run_pipeline(out_dir: str, apg_dir: Optional[str] = None, apk: Optional[str] = None,
                  ppg_config: str = "configs/ppg.yaml", llm_config: str = "configs/llm.yaml",
-                 train_model: bool = True, epochs: int = 40, neo4j: bool = False) -> Dict:
+                 train_model: bool = True, epochs: int = 40, neo4j: bool = False,
+                 precision: bool = False) -> Dict:
     """Run every stage; returns a summary dict of artifact paths + key counts."""
     out = ensure_dir(out_dir)
     summary: Dict = {"out": str(out)}
@@ -41,6 +56,8 @@ def run_pipeline(out_dir: str, apg_dir: Optional[str] = None, apk: Optional[str]
         run_apg_csv(apk, apg_dir)
     if not apg_dir:
         raise ValueError("provide --apg DIR or --apk FILE")
+    if precision:                              # tighten taint for real-APK scale
+        ppg_config = _precision_config(ppg_config, out)
 
     # 1. PPG
     builder = build_ppg(apg_dir, ppg_config, str(out / "ppg"), neo4j=neo4j)
@@ -88,10 +105,12 @@ def main() -> None:
     ap.add_argument("--no-train", action="store_true", help="skip ConvGNN training")
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--neo4j", action="store_true")
+    ap.add_argument("--precision", action="store_true",
+                    help="tighten taint for large real APKs (DDG-only, cap paths/source)")
     args = ap.parse_args()
     apg = args.apg or (None if args.apk else "data/fixtures/synthetic_apg_large")
     s = run_pipeline(args.out, apg_dir=apg, apk=args.apk, train_model=not args.no_train,
-                     epochs=args.epochs, neo4j=args.neo4j)
+                     epochs=args.epochs, neo4j=args.neo4j, precision=args.precision)
     print("\n=== PIPELINE COMPLETE ===")
     for k, v in s.items():
         print(f"  {k}: {v}")
