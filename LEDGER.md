@@ -118,3 +118,14 @@
 - **Found + mitigated taint over-generation:** added `dedup_by_method` (default) → 632K → 235K
   paths (-63%); `max_paths_per_source` + `follow_icfg:false` available for further pruning. FINDINGS §I.
 - Suite still **43 passed** (defaults are no-ops on the fixture).
+
+## Follow-up — Real corpus enablement (G4)
+- `adapters/fetch_fdroid.py` (no key) — validated: pulled ConnectBot + F-Droid client.
+- `adapters/fetch_androzoo.py` (key from `.env` `ANDRO_ZOO_KEY`, redacted everywhere) — `--check`
+  confirms key loads (64 chars, hidden); certifi CA bundle fixes androzoo TLS self-signed-chain
+  error; index probed (public list, 3.49 GB); download by sha256 or resolve packages via index.
+- `.env` gitignored + `.env.example` template; `pplib.load_dotenv`/`redact` (names-only, key-safe).
+- `pipeline/run_corpus.py` — many APKs -> one ADPPG dataset (per-APK processing, memory-safe;
+  leakage-free APK-grouped splits). `run_pipeline --precision` for large-APK taint tightening.
+- **Tests: 51 passed** (added adapter + corpus tests, all offline).
+- In progress: downloading AndroZoo index (3.49 GB) for package-based selection.

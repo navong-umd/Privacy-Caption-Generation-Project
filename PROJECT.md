@@ -135,10 +135,10 @@ step3_caption/         LLM/ICL caption + Code2Seq baseline
 step3_policy/          policy/notice assembly
 step4_eval/            evaluation harness
 step4_userstudy/       user-study instrument + ingestion
-pipeline/              run_pipeline end-to-end driver
-data/                  apg/ ppg/ prcs/ dataset/ fixtures/
+pipeline/              run_pipeline (one APK) + run_corpus (many APKs -> one dataset)
+data/                  apg/ ppg/ prcs/ dataset/ corpus/ fixtures/  (gitignored except fixtures)
 tests/                 unit + integration + e2e
-adapters/              run_apg_csv.py (Neo4j-free APG generation from a real .apk)
+adapters/              run_apg_csv (APK->APG, no Neo4j), fetch_fdroid (no key), fetch_androzoo (key)
 ```
 
 ## 8. Environment & Run Order
@@ -155,6 +155,13 @@ python -m step3_policy.assemble  --captions data/captions --out data/policy
 python -m step4_eval.evaluate    --dataset data/dataset --captions data/captions
 # or everything at once:
 python -m pipeline.run_pipeline --apg data/fixtures/synthetic_apg_large --out data/run
+```
+Real APK corpus (no key needed via F-Droid; or AndroZoo with a key in `.env` as `ANDRO_ZOO_KEY`):
+```
+python -m adapters.fetch_fdroid --out data/corpus                 # no key
+python -m adapters.fetch_androzoo --download-index data/androzoo/latest.csv.gz   # AndroZoo (3.5GB)
+python -m adapters.fetch_androzoo --index data/androzoo/latest.csv.gz --packages "com.x,com.y" --out data/corpus
+python -m pipeline.run_corpus --apks data/corpus --out data/corpus_run --precision
 ```
 
 ## 9. Progress Tracker
