@@ -51,14 +51,18 @@ def run_corpus(out_dir: str, apks_dir: Optional[str] = None,
     per_app: Dict[str, dict] = {}
     for name, src, is_apk in items:
         log.info("=== processing %s ===", name)
-        apg_dir = src
-        if is_apk:
-            from adapters.run_apg_csv import run_apg_csv
-            apg_dir = str(out / "apg" / name)
-            run_apg_csv(src, apg_dir)
-        builder = build_ppg(apg_dir, ppg_config, str(out / "ppg" / name))
-        extract_prcs(str(out / "ppg" / name), str(prcs_all))  # shared pool (ids are unique)
-        per_app[name] = builder.summary()
+        try:  # one bad/oversized APK must not kill the whole corpus run
+            apg_dir = src
+            if is_apk:
+                from adapters.run_apg_csv import run_apg_csv
+                apg_dir = str(out / "apg" / name)
+                run_apg_csv(src, apg_dir)
+            builder = build_ppg(apg_dir, ppg_config, str(out / "ppg" / name))
+            extract_prcs(str(out / "ppg" / name), str(prcs_all))  # shared pool (ids are unique)
+            per_app[name] = builder.summary()
+        except Exception as e:
+            log.warning("Skipping %s (%s)", name, e)
+            per_app[name] = {"error": str(e)}
 
     ds = build_dataset(str(prcs_all), str(out / "dataset"))
     summary = {"out": str(out), "apps": len(items), "per_app": per_app, "dataset": ds}
