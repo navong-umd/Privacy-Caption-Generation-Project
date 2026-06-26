@@ -1,0 +1,9 @@
+start_id,end_id,type,app_id
+com.appsflyer.Sender0->send5,com.synthetic.app0.IdProvider->getId5,CALLS,com.synthetic.app0@app0.apk
+com.appsflyer.Sender1->send5,com.synthetic.app1.IdProvider->getId5,CALLS,com.synthetic.app1@app1.apk
+com.appsflyer.Sender2->send5,com.synthetic.app2.IdProvider->getId5,CALLS,com.synthetic.app2@app2.apk
+com.appsflyer.Sender3->send5,com.synthetic.app3.IdProvider->getId5,CALLS,com.synthetic.app3@app3.apk
+com.appsflyer.Sender4->send5,com.synthetic.app4.IdProvider->getId5,CALLS,com.synthetic.app4@app4.apk
+com.appsflyer.Sender5->send5,com.synthetic.app5.IdProvider->getId5,CALLS,com.synthetic.app5@app5.apk
+com.appsflyer.Sender6->send5,com.synthetic.app6.IdProvider->getId5,CALLS,com.synthetic.app6@app6.apk
+com.appsflyer.Sender7->send5,com.synthetic.app7.IdProvider->getId5,CALLS,com.synthetic.app7@app7.apk

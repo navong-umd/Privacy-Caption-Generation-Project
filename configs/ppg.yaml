@@ -1,0 +1,74 @@
+# PPG builder configuration (Phase A). EDITABLE. All paths are repo-relative.
+
+paths:
+  apg_dir: data/apg                       # input: Stage 2 APG CSVs
+  personal_info_csv: "Document Analysis Module/output/personal_info_results.csv"
+  formatted_sources_csv: "Document Analysis Module/output/formatted_sources.csv"
+  sinks_catalog: configs/sinks.yaml
+  out_dir: data/ppg                       # output: PPG_nodes.csv / PPG_edges.csv / ppg.graphml / ppg.pkl
+
+sources:
+  use_known_sources: true                 # curated public-API PI signatures (high precision)
+  use_formatted_sources: true             # match against SuSi source catalog (17.8k signatures)
+  use_personal_info: true                 # enrich pi_type from Stage 3 personal_info_results.csv
+  exclude_categories: [NO_CATEGORY]       # SuSi categories to ignore as PI sources
+  formatted_match_by_method_name: false   # recall mode: also match by method-name only (noisy)
+
+# Curated public PI source APIs that real decompiled apps actually call.
+# (The SuSi catalog uses framework-INTERNAL class names, so this allowlist is needed
+#  for precision against decompiled public-API calls.) class -> method -> category. EDITABLE.
+known_sources:
+  - {class: android.location.LocationManager, method: getLastKnownLocation, category: LOCATION_INFORMATION}
+  - {class: android.location.LocationManager, method: requestLocationUpdates, category: LOCATION_INFORMATION}
+  - {class: android.telephony.TelephonyManager, method: getDeviceId, category: UNIQUE_IDENTIFIER}
+  - {class: android.telephony.TelephonyManager, method: getImei, category: UNIQUE_IDENTIFIER}
+  - {class: android.telephony.TelephonyManager, method: getSubscriberId, category: UNIQUE_IDENTIFIER}
+  - {class: android.telephony.TelephonyManager, method: getSimSerialNumber, category: UNIQUE_IDENTIFIER}
+  - {class: android.telephony.TelephonyManager, method: getLine1Number, category: PHONE_INFORMATION}
+  - {class: android.provider.Settings$Secure, method: getString, category: UNIQUE_IDENTIFIER}
+  - {class: android.accounts.AccountManager, method: getAccounts, category: ACCOUNT_INFORMATION}
+  - {class: android.accounts.AccountManager, method: getAccountsByType, category: ACCOUNT_INFORMATION}
+  - {class: android.content.ContentResolver, method: query, category: CONTACT_INFORMATION}
+  - {class: android.bluetooth.BluetoothAdapter, method: getAddress, category: BLUETOOTH_INFORMATION}
+  - {class: android.bluetooth.BluetoothAdapter, method: getBondedDevices, category: BLUETOOTH_INFORMATION}
+  - {class: android.net.wifi.WifiInfo, method: getMacAddress, category: UNIQUE_IDENTIFIER}
+  - {class: android.hardware.Camera, method: open, category: IMAGE}
+  - {class: android.media.MediaRecorder, method: start, category: AUDIO}
+
+taint:
+  max_depth: 25                           # cap on taint propagation hops
+  inter_procedural: true                  # follow CALLS edges between methods
+  follow_icfg: true                       # use ICFG_NEXT as fallback adjacency when DDG is sparse
+
+# SuSi category -> Android permission (best-effort; editable).
+permission_map:
+  LOCATION_INFORMATION: ACCESS_FINE_LOCATION
+  UNIQUE_IDENTIFIER: READ_PHONE_STATE
+  PHONE_INFORMATION: READ_PHONE_STATE
+  ACCOUNT_INFORMATION: GET_ACCOUNTS
+  CONTACT_INFORMATION: READ_CONTACTS
+  CALENDAR_INFORMATION: READ_CALENDAR
+  SMS_MMS: READ_SMS
+  BROWSER_INFORMATION: READ_HISTORY_BOOKMARKS
+  NETWORK_INFORMATION: ACCESS_NETWORK_STATE
+  BLUETOOTH_INFORMATION: BLUETOOTH
+  IMAGE: READ_EXTERNAL_STORAGE
+  FILE_INFORMATION: READ_EXTERNAL_STORAGE
+  DATABASE_INFORMATION: READ_EXTERNAL_STORAGE
+  EMAIL: GET_ACCOUNTS
+  SYNCHRONIZATION_DATA: WRITE_SYNC_SETTINGS
+  NFC: NFC
+  SYSTEM_SETTINGS: WRITE_SETTINGS
+  AUDIO: RECORD_AUDIO
+
+# LINDDUN GO threat tagging for tainted source->sink flows (Phase A overlay). EDITABLE.
+# Keyed by sink_type; produces the privacy_threat property on the flow.
+linddun_map:
+  network: [Data Disclosure, Linking, Detecting]
+  logging: [Data Disclosure, Detecting]
+  storage: [Non-compliance, Linking]
+  ipc: [Data Disclosure, Linking]
+  serialization: [Data Disclosure]
+  heuristic_unknown: [Data Disclosure]
+# An identifying PI type escalates to the Identifying threat regardless of sink.
+identifying_pi_categories: [UNIQUE_IDENTIFIER, PHONE_INFORMATION, ACCOUNT_INFORMATION, EMAIL]

@@ -1,0 +1,24 @@
+# New dependencies for Stage 4 (PPG) + Step 2 (PRCS/ADPPG/ConvGNN) + Step 3/4.
+# Pinned to versions with verified Python 3.14 wheels (this machine: CPython 3.14.0).
+# Stage 1-3 deps (pandas, nltk, stanza, requests, bs4) are unchanged and not repeated here.
+
+# --- core data / graph (lightweight, needed for PPG/PRCS/dataset stages) ---
+pandas==2.3.3
+numpy==2.3.5
+networkx==3.6.1
+PyYAML==6.0.3
+
+# --- static analysis adapter (only needed to regenerate APG from a real .apk) ---
+androguard==4.1.4
+
+# --- graph database (optional; PPG can run file-only without it) ---
+neo4j==6.2.0
+
+# --- ConvGNN (Phase D) ---
+torch==2.12.1
+torch-geometric==2.8.0
+scikit-learn==1.9.0
+
+# --- testing ---
+pytest==8.4.2
+pytest-cov==7.0.0

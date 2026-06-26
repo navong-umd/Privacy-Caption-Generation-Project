@@ -1,0 +1,3 @@
+start_id,end_id,type,app_id
+com.appsflyer.Sender0->send5,com.synthetic.app0.IdProvider->getId5,CALLS,com.synthetic.app0@app0.apk
+com.appsflyer.Sender1->send5,com.synthetic.app1.IdProvider->getId5,CALLS,com.synthetic.app1@app1.apk

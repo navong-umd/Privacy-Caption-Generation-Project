@@ -1,0 +1,37 @@
+# Third-party ad / analytics SDK catalog used by the WEAK heuristic labeler (Phase C). EDITABLE.
+# Package-prefix match against a PRCS's class names. Drives the Purpose head heuristics.
+# NOTE: this only powers WEAK labels — never treat its output as ground truth.
+
+advertisement:
+  - com.google.ads
+  - com.google.android.gms.ads
+  - com.facebook.ads
+  - com.mopub
+  - com.applovin
+  - com.unity3d.ads
+  - com.inmobi
+  - com.adcolony
+  - com.chartboost
+  - com.vungle
+  - com.ironsource
+
+analytics:
+  - com.google.firebase.analytics
+  - com.google.android.gms.analytics
+  - com.flurry
+  - com.mixpanel
+  - com.amplitude
+  - com.segment
+  - com.crashlytics
+  - io.branch
+  - com.appsflyer
+  - com.adjust.sdk
+
+# Packages treated as first-party / framework (Purpose -> Functionality by default).
+functionality_hint:
+  - android.
+  - androidx.
+  - java.
+  - javax.
+  - kotlin.
+  - org.json

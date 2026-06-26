@@ -1,0 +1,52 @@
+# Sink catalog for PPG taint analysis (Phase A). EDITABLE.
+# Each rule matches a Statement.callee key "pkg.Class->method".
+#   match: exact | endswith | regex
+#   value: the string/pattern to test
+#   sink_type: network | storage | logging | ipc | serialization
+#   label: short human label
+#
+# Unknown-sink heuristics (for sinks NOT in this catalog) are configured at the bottom.
+
+rules:
+  # --- network ---
+  - {match: endswith, value: "->openConnection", sink_type: network, label: openConnection}
+  - {match: exact,    value: "java.net.URL->openConnection", sink_type: network, label: URL.openConnection}
+  - {match: regex,    value: "^java\\.net\\.HttpURLConnection->", sink_type: network, label: HttpURLConnection}
+  - {match: regex,    value: "^javax\\.net\\.ssl\\.HttpsURLConnection->", sink_type: network, label: HttpsURLConnection}
+  - {match: regex,    value: "^okhttp3\\.", sink_type: network, label: OkHttp}
+  - {match: regex,    value: "^retrofit2\\.", sink_type: network, label: Retrofit}
+  - {match: regex,    value: "^org\\.apache\\.http\\.", sink_type: network, label: ApacheHttp}
+  - {match: regex,    value: "^java\\.net\\.Socket->", sink_type: network, label: Socket}
+  - {match: regex,    value: "^com\\.android\\.volley\\.", sink_type: network, label: Volley}
+  - {match: endswith, value: "->loadUrl", sink_type: network, label: WebView.loadUrl}
+  - {match: endswith, value: "->loadData", sink_type: network, label: WebView.loadData}
+
+  # --- storage ---
+  - {match: regex,    value: "^android\\.content\\.SharedPreferences", sink_type: storage, label: SharedPreferences}
+  - {match: regex,    value: "->edit$", sink_type: storage, label: SharedPreferences.edit}
+  - {match: regex,    value: "^android\\.database\\.sqlite\\.", sink_type: storage, label: SQLite}
+  - {match: regex,    value: "->(insert|update|replace)$", sink_type: storage, label: db.write}
+  - {match: regex,    value: "^java\\.io\\.(FileOutputStream|FileWriter|File)->", sink_type: storage, label: FileIO}
+  - {match: regex,    value: "^android\\.content\\.ContentResolver->(insert|update|delete)", sink_type: storage, label: ContentResolver.write}
+
+  # --- logging ---
+  - {match: regex,    value: "^android\\.util\\.Log->", sink_type: logging, label: Log}
+  - {match: exact,    value: "java.io.PrintStream->println", sink_type: logging, label: System.out}
+
+  # --- ipc ---
+  - {match: regex,    value: "^android\\.content\\.Intent->(putExtra|setData)", sink_type: ipc, label: Intent.extra}
+  - {match: regex,    value: "->(startActivity|startService|sendBroadcast|bindService)$", sink_type: ipc, label: Component.launch}
+  - {match: regex,    value: "^android\\.os\\.Binder->", sink_type: ipc, label: Binder}
+
+  # --- serialization ---
+  - {match: regex,    value: "^java\\.io\\.(ObjectOutputStream|Serializable)->", sink_type: serialization, label: ObjectStream}
+  - {match: regex,    value: "^com\\.google\\.gson\\.", sink_type: serialization, label: Gson}
+  - {match: regex,    value: "^org\\.json\\.JSONObject->put", sink_type: serialization, label: JSONObject}
+
+# Heuristic detection of UNKNOWN sinks (callees not matched above).
+# A tainted invoke whose method name contains one of these verbs AND whose callee class
+# is external (not an app-internal method) is flagged as a heuristic/unknown sink.
+unknown_sink_heuristics:
+  enabled: true
+  egress_verbs: [send, write, post, upload, put, publish, transmit, sync, flush, emit, report, track, log, store, save, persist]
+  sink_type: heuristic_unknown

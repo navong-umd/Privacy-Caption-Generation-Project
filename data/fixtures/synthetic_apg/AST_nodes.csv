@@ -1,0 +1,55 @@
+id,label,type,code,callee,app_id
+com.google.ads.AdRequestHelper0->flow0,Method,Method,,,com.synthetic.app0@app0.apk
+com.flurry.sdk.AnalyticsAgent0->flow1,Method,Method,,,com.synthetic.app0@app0.apk
+com.synthetic.app0.ContactStore->flow2,Method,Method,,,com.synthetic.app0@app0.apk
+com.synthetic.app0.DebugLogger->flow3,Method,Method,,,com.synthetic.app0@app0.apk
+com.synthetic.app0.LocationSharer->flow4,Method,Method,,,com.synthetic.app0@app0.apk
+com.synthetic.app0.IdProvider->getId5,Method,Method,,,com.synthetic.app0@app0.apk
+com.appsflyer.Sender0->send5,Method,Method,,,com.synthetic.app0@app0.apk
+com.google.ads.AdRequestHelper1->flow0,Method,Method,,,com.synthetic.app1@app1.apk
+com.flurry.sdk.AnalyticsAgent1->flow1,Method,Method,,,com.synthetic.app1@app1.apk
+com.synthetic.app1.ContactStore->flow2,Method,Method,,,com.synthetic.app1@app1.apk
+com.synthetic.app1.DebugLogger->flow3,Method,Method,,,com.synthetic.app1@app1.apk
+com.synthetic.app1.LocationSharer->flow4,Method,Method,,,com.synthetic.app1@app1.apk
+com.synthetic.app1.IdProvider->getId5,Method,Method,,,com.synthetic.app1@app1.apk
+com.appsflyer.Sender1->send5,Method,Method,,,com.synthetic.app1@app1.apk
+com.google.ads.AdRequestHelper0->flow0_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.location.LocationManager->getLastKnownLocation",android.location.LocationManager->getLastKnownLocation,com.synthetic.app0@app0.apk
+com.google.ads.AdRequestHelper0->flow0_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app0@app0.apk
+com.google.ads.AdRequestHelper0->flow0_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., okhttp3.RealCall->execute",okhttp3.RealCall->execute,com.synthetic.app0@app0.apk
+com.flurry.sdk.AnalyticsAgent0->flow1_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.telephony.TelephonyManager->getDeviceId",android.telephony.TelephonyManager->getDeviceId,com.synthetic.app0@app0.apk
+com.flurry.sdk.AnalyticsAgent0->flow1_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app0@app0.apk
+com.flurry.sdk.AnalyticsAgent0->flow1_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., java.net.HttpURLConnection->getOutputStream",java.net.HttpURLConnection->getOutputStream,com.synthetic.app0@app0.apk
+com.synthetic.app0.ContactStore->flow2_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.telephony.TelephonyManager->getSubscriberId",android.telephony.TelephonyManager->getSubscriberId,com.synthetic.app0@app0.apk
+com.synthetic.app0.ContactStore->flow2_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app0@app0.apk
+com.synthetic.app0.ContactStore->flow2_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., android.content.SharedPreferences$Editor->putString",android.content.SharedPreferences$Editor->putString,com.synthetic.app0@app0.apk
+com.synthetic.app0.DebugLogger->flow3_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.accounts.AccountManager->getAccounts",android.accounts.AccountManager->getAccounts,com.synthetic.app0@app0.apk
+com.synthetic.app0.DebugLogger->flow3_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app0@app0.apk
+com.synthetic.app0.DebugLogger->flow3_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., android.util.Log->d",android.util.Log->d,com.synthetic.app0@app0.apk
+com.synthetic.app0.LocationSharer->flow4_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.content.ContentResolver->query",android.content.ContentResolver->query,com.synthetic.app0@app0.apk
+com.synthetic.app0.LocationSharer->flow4_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app0@app0.apk
+com.synthetic.app0.LocationSharer->flow4_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., android.content.Intent->putExtra",android.content.Intent->putExtra,com.synthetic.app0@app0.apk
+com.synthetic.app0.IdProvider->getId5_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.location.LocationManager->getLastKnownLocation",android.location.LocationManager->getLastKnownLocation,com.synthetic.app0@app0.apk
+com.synthetic.app0.IdProvider->getId5_stmt_1,Statement,return-object,return-object v0,,com.synthetic.app0@app0.apk
+com.appsflyer.Sender0->send5_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., com.synthetic.app0.IdProvider->getId5",com.synthetic.app0.IdProvider->getId5,com.synthetic.app0@app0.apk
+com.appsflyer.Sender0->send5_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app0@app0.apk
+com.appsflyer.Sender0->send5_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., java.net.URL->openConnection",java.net.URL->openConnection,com.synthetic.app0@app0.apk
+com.google.ads.AdRequestHelper1->flow0_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.location.LocationManager->getLastKnownLocation",android.location.LocationManager->getLastKnownLocation,com.synthetic.app1@app1.apk
+com.google.ads.AdRequestHelper1->flow0_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app1@app1.apk
+com.google.ads.AdRequestHelper1->flow0_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., okhttp3.RealCall->execute",okhttp3.RealCall->execute,com.synthetic.app1@app1.apk
+com.flurry.sdk.AnalyticsAgent1->flow1_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.telephony.TelephonyManager->getDeviceId",android.telephony.TelephonyManager->getDeviceId,com.synthetic.app1@app1.apk
+com.flurry.sdk.AnalyticsAgent1->flow1_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app1@app1.apk
+com.flurry.sdk.AnalyticsAgent1->flow1_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., java.net.HttpURLConnection->getOutputStream",java.net.HttpURLConnection->getOutputStream,com.synthetic.app1@app1.apk
+com.synthetic.app1.ContactStore->flow2_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.telephony.TelephonyManager->getSubscriberId",android.telephony.TelephonyManager->getSubscriberId,com.synthetic.app1@app1.apk
+com.synthetic.app1.ContactStore->flow2_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app1@app1.apk
+com.synthetic.app1.ContactStore->flow2_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., android.content.SharedPreferences$Editor->putString",android.content.SharedPreferences$Editor->putString,com.synthetic.app1@app1.apk
+com.synthetic.app1.DebugLogger->flow3_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.accounts.AccountManager->getAccounts",android.accounts.AccountManager->getAccounts,com.synthetic.app1@app1.apk
+com.synthetic.app1.DebugLogger->flow3_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app1@app1.apk
+com.synthetic.app1.DebugLogger->flow3_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., android.util.Log->d",android.util.Log->d,com.synthetic.app1@app1.apk
+com.synthetic.app1.LocationSharer->flow4_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.content.ContentResolver->query",android.content.ContentResolver->query,com.synthetic.app1@app1.apk
+com.synthetic.app1.LocationSharer->flow4_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app1@app1.apk
+com.synthetic.app1.LocationSharer->flow4_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., android.content.Intent->putExtra",android.content.Intent->putExtra,com.synthetic.app1@app1.apk
+com.synthetic.app1.IdProvider->getId5_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., android.location.LocationManager->getLastKnownLocation",android.location.LocationManager->getLastKnownLocation,com.synthetic.app1@app1.apk
+com.synthetic.app1.IdProvider->getId5_stmt_1,Statement,return-object,return-object v0,,com.synthetic.app1@app1.apk
+com.appsflyer.Sender1->send5_stmt_0,Statement,invoke-virtual,"invoke-virtual ..., com.synthetic.app1.IdProvider->getId5",com.synthetic.app1.IdProvider->getId5,com.synthetic.app1@app1.apk
+com.appsflyer.Sender1->send5_stmt_1,Statement,move-result-object,move-result-object v0,,com.synthetic.app1@app1.apk
+com.appsflyer.Sender1->send5_stmt_2,Statement,invoke-virtual,"invoke-virtual v0, ..., java.net.URL->openConnection",java.net.URL->openConnection,com.synthetic.app1@app1.apk
