@@ -39,6 +39,10 @@ taint:
   max_depth: 25                           # cap on taint propagation hops
   inter_procedural: true                  # follow CALLS edges between methods
   follow_icfg: true                       # use ICFG_NEXT as fallback adjacency when DDG is sparse
+  # precision knobs (heuristic taint over-generates on real APKs — see FINDINGS §I):
+  dedup_by_method: true                   # keep one path per (source_method, sink_method) pair
+  max_paths_per_source: 0                 # 0 = unlimited; set e.g. 25 to cap real-APK explosion
+  # For large production apps prefer precision: follow_icfg:false + max_paths_per_source:25.
 
 # SuSi category -> Android permission (best-effort; editable).
 permission_map:

@@ -89,3 +89,15 @@
   argument for always smoke-testing on a real APK.
 - **Scale note:** taint is depth-capped (`max_depth`), so per-source BFS stays bounded even on a
   1.5M-statement graph; this is what keeps a real APK tractable without a full points-to analysis.
+- **Real PPG result (F-Droid):** 206 PI sources, 11,639 sinks, **632,178 source→sink taint paths**,
+  1.66M PPG nodes, 4.32M edges. Example: `ConnectivityMonitorService.getNetworkState → okhttp3
+  RealConnection` (network, 8 hops) — a genuine network-egress flow.
+- **KEY FINDING — heuristic taint over-generates at scale.** 206 sources × depth-25 BFS with the
+  ICFG-fallback + inter-procedural CALL-RET rules yields 632K source→sink pairs (many sharing one
+  source, e.g. one `getNetworkState` reaching thousands of okhttp sinks). This is fine on the
+  synthetic fixture but explodes on a real app, and 1:1 PRCS extraction (one JSON per path) would be
+  impractical. **Mitigations for next iteration (config-ready):** (a) keep `follow_icfg:false` for
+  precision on large apps; (b) dedup paths by (source_method, sink_method); (c) rank/keep top-k
+  shortest paths per source; (d) require the sink to be data-dependent on the source (DDG-only),
+  not merely ICFG-reachable. These are precision knobs, not correctness fixes — the over-approx is
+  intentional for recall but must be tightened before mass PRCS extraction (ties into G4 scale-out).

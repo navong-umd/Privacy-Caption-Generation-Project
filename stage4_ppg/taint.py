@@ -71,6 +71,9 @@ def propagate(apg: APG, sources: Set[str], sinks: Set[str], cfg: dict) -> List[T
     max_depth = tcfg.get("max_depth", 25)
     inter = tcfg.get("inter_procedural", True)
     follow_icfg = tcfg.get("follow_icfg", True)
+    # precision knobs (keep real APKs tractable; defaults are no-ops on small graphs)
+    dedup_by_method = tcfg.get("dedup_by_method", True)
+    max_paths_per_source = tcfg.get("max_paths_per_source", 0)  # 0 = unlimited
 
     adj, callsites = _build_adjacency(apg, follow_icfg)
     stmt_method = {sid: s["method_id"] for sid, s in apg.statements.items()}
@@ -101,18 +104,29 @@ def propagate(apg: APG, sources: Set[str], sinks: Set[str], cfg: dict) -> List[T
                     depth[v] = depth[u] + 1
                     q.append(v)
 
-        # record a path for every sink reached from this source
-        for snk in sinks:
-            if snk in parent and snk != src:
-                path, cur = [], snk
-                while cur:
-                    path.append(cur)
-                    cur = parent[cur]
-                path.reverse()
-                paths.append(TaintPath(
-                    source_stmt=src, sink_stmt=snk, path=path,
-                    app_id=apg.statements[src].get("app_id", apg.app_id),
-                ))
+        # record a path for every sink reached from this source (with precision caps)
+        src_method = stmt_method.get(src, "")
+        seen_pairs: Set[str] = set()
+        n_kept = 0
+        reached = sorted((s for s in sinks if s in parent and s != src), key=lambda s: depth[s])
+        for snk in reached:
+            if dedup_by_method:
+                key = f"{src_method}|{stmt_method.get(snk, '')}"
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
+            path, cur = [], snk
+            while cur:
+                path.append(cur)
+                cur = parent[cur]
+            path.reverse()
+            paths.append(TaintPath(
+                source_stmt=src, sink_stmt=snk, path=path,
+                app_id=apg.statements[src].get("app_id", apg.app_id),
+            ))
+            n_kept += 1
+            if max_paths_per_source and n_kept >= max_paths_per_source:
+                break
 
     log.info("Taint: %d sources, %d sinks -> %d source->sink paths",
              len(sources), len(sinks), len(paths))
