@@ -9,7 +9,16 @@ already runs on a real APK end-to-end — it just needs APKs to point at.
   (mirrors the Stage 2 builder; the original script is untouched). Needs `pip install androguard`.
 - `pipeline/run_pipeline.py --apk <file>` — runs APK → APG → … → policy → eval in one command.
 
-## What you do
+## Quick start with NO key (F-Droid) — use this while the AndroZoo key is pending
+`adapters/fetch_fdroid.py` downloads open-source APKs straight from F-Droid (no credentials,
+stdlib only). It resolves current APK filenames from the F-Droid index and saves them to a folder.
+```
+python -m adapters.fetch_fdroid --packages "org.connectbot,com.fsck.k9" --out data/corpus --max 3
+python -m pipeline.run_pipeline --apk data/corpus/<downloaded>.apk --out data/run_corpus
+```
+This is enough to begin the G4 → G1 loop today. Swap in AndroZoo below for a larger/representative corpus.
+
+## AndroZoo path (later, needs your key)
 1. Get an **Androzoo API key** (https://androzoo.uni.lu/) and accept its terms.
 2. Download a sample/corpus of APKs (your selection criteria — e.g., top free apps, F-Droid, by
    category). Place them in a folder, e.g. `data/corpus/*.apk`.
