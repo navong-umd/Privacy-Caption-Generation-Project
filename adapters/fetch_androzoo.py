@@ -13,6 +13,7 @@ import argparse
 import csv
 import gzip
 import os
+import ssl
 import urllib.request
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
@@ -21,9 +22,72 @@ from pplib.io_utils import ensure_dir, get_logger, load_dotenv, redact
 
 log = get_logger("fetch_androzoo")
 
+
+def _ssl_ctx() -> ssl.SSLContext:
+    """Verified TLS context using the Mozilla certifi CA bundle when available."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
+
+
+_CTX = _ssl_ctx()
+
 API_URL = "https://androzoo.uni.lu/api/download"
+# Candidate locations for the AndroZoo index list (tried in order; key appended if needed).
+INDEX_URLS = [
+    "https://androzoo.uni.lu/static/lists/latest.csv.gz",
+    "https://androzoo.uni.lu/api/get_list?name=latest.csv.gz",
+]
 DEFAULT_KEY_ENVS = ["ANDRO_ZOO_KEY", "ANDROZOO_API_KEY", "ANDROZOO_KEY"]
 _UA = "privacy-caption-research/1.0 (+fetch_androzoo)"
+
+
+def _with_key(url: str, key: str) -> str:
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}apikey={key}"
+
+
+def probe_index_url(key: str) -> Optional[str]:
+    """Cheaply find a working index URL via a 1 KB range request (no big download)."""
+    for base in INDEX_URLS:
+        for url in (base, _with_key(base, key)):
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": _UA, "Range": "bytes=0-1023"})
+                with urllib.request.urlopen(req, timeout=30, context=_CTX) as r:  # noqa: S310
+                    chunk = r.read(1024)
+                if chunk[:2] == b"\x1f\x8b" or len(chunk) >= 512:  # gzip magic or real data
+                    log.info("Index URL OK: %s", redact(url))
+                    return url
+            except Exception as e:
+                log.info("Index URL not usable (%s): %s", redact(url), redact(str(e)))
+    return None
+
+
+def download_index(dest: str, key: str, url: Optional[str] = None) -> Path:
+    """Stream the AndroZoo index list to disk (skips if already present and non-empty)."""
+    out = Path(dest)
+    if out.exists() and out.stat().st_size > 1_000_000:
+        log.info("Index already present: %s (%.0f MB)", out, out.stat().st_size / 1e6)
+        return out
+    url = url or probe_index_url(key)
+    if not url:
+        raise RuntimeError("Could not locate the AndroZoo index URL; check key / AndroZoo docs.")
+    ensure_dir(out.parent)
+    log.info("Downloading index -> %s (this is large)", out)
+    req = urllib.request.Request(url, headers={"User-Agent": _UA})
+    with urllib.request.urlopen(req, timeout=600, context=_CTX) as r, open(out, "wb") as f:  # noqa: S310
+        total = 0
+        while True:
+            chunk = r.read(1 << 20)
+            if not chunk:
+                break
+            f.write(chunk)
+            total += len(chunk)
+    log.info("Index downloaded: %.0f MB", total / 1e6)
+    return out
 
 
 def get_api_key(env_names: Optional[List[str]] = None) -> str:
@@ -72,7 +136,7 @@ def download_by_sha256(sha256: str, out_dir: Path, key: str, timeout: int = 120)
     url = f"{API_URL}?apikey={key}&sha256={sha256}"
     log.info("Downloading %s", redact(url))
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
-    with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 (explicit user request)
+    with urllib.request.urlopen(req, timeout=timeout, context=_CTX) as r:  # noqa: S310 (explicit user request)
         data = r.read()
     if len(data) < 1000:  # AndroZoo returns a short error body on bad key/hash
         raise RuntimeError(f"download too small ({len(data)} bytes) — check key/sha256")
@@ -112,6 +176,8 @@ def main() -> None:
     ap.add_argument("--out", default="data/corpus")
     ap.add_argument("--max", type=int, default=5)
     ap.add_argument("--check", action="store_true", help="verify the key is loaded (prints no secret)")
+    ap.add_argument("--probe-index", action="store_true", help="find the index URL cheaply (no big download)")
+    ap.add_argument("--download-index", default=None, help="download the AndroZoo index to this path")
     args = ap.parse_args()
 
     if args.check:
@@ -120,6 +186,16 @@ def main() -> None:
             print(f"[+] AndroZoo key loaded OK (length {len(key)}, value hidden).")
         except RuntimeError as e:
             print(f"[!] {e}")
+        return
+
+    if args.probe_index:
+        url = probe_index_url(get_api_key())
+        print(f"[+] usable index URL: {redact(url)}" if url else "[!] no usable index URL found")
+        return
+
+    if args.download_index:
+        path = download_index(args.download_index, get_api_key())
+        print(f"[+] index at {path}. Next: --index {path} --packages \"pkg1,pkg2\"")
         return
 
     shas = [s.strip() for s in args.sha256.split(",")] if args.sha256 else None
