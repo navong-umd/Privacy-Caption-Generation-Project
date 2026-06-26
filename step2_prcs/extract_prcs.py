@@ -45,6 +45,7 @@ class PRCS:
     source_api: str
     sink_api: str
     sink_type: str
+    sink_label: str
     pi_type: str
     pi_category: str
     permission: str
@@ -155,6 +156,7 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
             source_api=src_d.get("callee", ""),
             sink_api=snk_d.get("callee", ""),
             sink_type=snk_d.get("sink_type", ""),
+            sink_label=snk_d.get("sink_label", ""),
             pi_type=src_d.get("pi_type", ""),
             pi_category=src_d.get("category", ""),
             permission=src_d.get("permission", ""),

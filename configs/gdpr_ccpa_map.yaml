@@ -1,0 +1,53 @@
+# GDPR / CCPA requirement mapping (Phase F). EDITABLE.
+# Maps analyzed privacy facts (practice, purpose, sensitive PI) to the regulatory
+# obligations a privacy notice must satisfy. Not legal advice — a drafting aid.
+
+practice:
+  Collecting:
+    gdpr: ["Art.5(1) lawfulness & transparency", "Art.13 information to be provided at collection"]
+    ccpa: ["§1798.100 consumer right to know what is collected"]
+  Processing:
+    gdpr: ["Art.6(1) lawful basis for processing"]
+    ccpa: ["§1798.100 disclosure of processing"]
+  Sharing:
+    gdpr: ["Art.13(1)(e) recipients / categories of recipients", "Art.44 safeguards for transfers"]
+    ccpa: ["§1798.115 disclosure of sale/sharing", "§1798.120 right to opt out of sale/sharing"]
+  Other:
+    gdpr: ["Art.5(1) transparency"]
+    ccpa: ["§1798.100"]
+
+purpose:
+  Advertisement:
+    gdpr: ["Art.6(1)(a) consent", "Art.21(2) right to object to direct marketing"]
+    ccpa: ["§1798.120 opt out of sale/sharing for cross-context behavioral advertising"]
+  Analytics:
+    gdpr: ["Art.6(1)(a)/(f) consent or legitimate interest"]
+    ccpa: ["§1798.100 disclosure of analytics use"]
+  Functionality:
+    gdpr: ["Art.6(1)(b) performance of a contract"]
+    ccpa: []
+  Other:
+    gdpr: ["Art.5(1)(b) purpose limitation"]
+    ccpa: []
+
+# PI categories treated as sensitive (extra obligations).
+sensitive:
+  categories: [LOCATION_INFORMATION, UNIQUE_IDENTIFIER, PHONE_INFORMATION,
+               ACCOUNT_INFORMATION, CONTACT_INFORMATION, SMS_MMS]
+  gdpr: ["Art.9 special-category data (where applicable)", "Art.7 explicit consent"]
+  ccpa: ["§1798.121 limits on use of sensitive personal information"]
+
+# Human-readable names for PI categories used in the notice.
+pi_names:
+  LOCATION_INFORMATION: location
+  UNIQUE_IDENTIFIER: device identifiers
+  PHONE_INFORMATION: phone number
+  ACCOUNT_INFORMATION: account information
+  CONTACT_INFORMATION: contacts
+  CALENDAR_INFORMATION: calendar
+  SMS_MMS: text messages
+  BROWSER_INFORMATION: browsing history
+  NETWORK_INFORMATION: network information
+  BLUETOOTH_INFORMATION: Bluetooth data
+  IMAGE: photos
+  AUDIO: microphone audio

@@ -67,3 +67,12 @@
 - **Tests:** `tests/test_step3_caption.py` — 6 passed (deterministic mock, default provider,
   key-gated error, baseline, prompt, dataset run). **Suite: 29 passed.**
 - **Status:** done (real LLM prose needs an API key — documented in llm.yaml).
+
+## Phase F — Policy / notice assembly
+- `step3_policy/assemble.py`: per-app notice.md + policy.md + policy.json; sections (collected /
+  used / shared-with / purposes) + GDPR & CCPA obligation mapping. `configs/gdpr_ccpa_map.yaml`.
+- Added `sink_label` to PRCS so "shared with" names real recipients (OkHttp, HttpURLConnection…).
+- 8-app run: each policy triggers 11 GDPR + 7 CCPA obligations; DRAFT/WEAK banner on weak inputs.
+- **Tests:** `tests/test_step3_policy.py` — 4 passed (per-app docs, GDPR/CCPA mapping, draft banner,
+  recipients). **Suite: 33 passed.**
+- **Status:** done.
