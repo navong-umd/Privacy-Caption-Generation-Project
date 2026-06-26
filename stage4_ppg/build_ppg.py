@@ -30,6 +30,16 @@ from stage4_ppg.taint import TaintPath, propagate
 log = get_logger("build_ppg")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+def _xml_ok(cp: int) -> bool:
+    # XML 1.0 valid: tab/LF/CR, 0x20-0xD7FF, 0xE000-0xFFFD, 0x10000-0x10FFFF.
+    return (cp in (0x09, 0x0A, 0x0D) or 0x20 <= cp <= 0xD7FF or
+            0xE000 <= cp <= 0xFFFD or 0x10000 <= cp <= 0x10FFFF)
+
+
+def _xml_safe(v) -> str:
+    # Strip XML-illegal control/NULL chars (decompiled real APK code contains them).
+    return "".join(ch for ch in str(v) if _xml_ok(ord(ch)))
+
 
 def _linddun(sink_type: str, category: str, cfg: dict) -> List[str]:
     """Map a tainted flow to LINDDUN(GO) threat categories."""
@@ -181,16 +191,20 @@ class PPGBuilder:
             out_dir / "PPG_edges.csv", index=False, encoding="utf-8")
 
     def export_graph(self, out_dir: Path) -> None:
-        """Write a GraphML and a NetworkX pickle (PyG-ready serialization)."""
-        # GraphML needs scalar attrs; stringify everything for safety.
-        H = nx.MultiDiGraph()
-        for nid, d in self.G.nodes(data=True):
-            H.add_node(nid, **{k: str(v) for k, v in d.items()})
-        for u, v, d in self.G.edges(data=True):
-            H.add_edge(u, v, **{k: str(v2) for k, v2 in d.items()})
-        nx.write_graphml(H, out_dir / "ppg.graphml")
+        """Write a NetworkX pickle (PyG-ready) and a GraphML (best-effort on real data)."""
+        # Pickle first: it is robust to the raw smali strings real APKs contain.
         with open(out_dir / "ppg.pkl", "wb") as f:
             pickle.dump(self.G, f)
+        # GraphML via lxml rejects NULL/control chars from decompiled code -> sanitize.
+        H = nx.MultiDiGraph()
+        for nid, d in self.G.nodes(data=True):
+            H.add_node(_xml_safe(nid), **{k: _xml_safe(v) for k, v in d.items()})
+        for u, v, d in self.G.edges(data=True):
+            H.add_edge(_xml_safe(u), _xml_safe(v), **{k: _xml_safe(v2) for k, v2 in d.items()})
+        try:
+            nx.write_graphml(H, out_dir / "ppg.graphml")
+        except Exception as e:  # never let GraphML quirks abort the pipeline
+            log.warning("GraphML export skipped (%s); pickle is authoritative", e)
 
     def export_taint(self, out_dir: Path) -> None:
         dump_json([asdict(tp) for tp in self.taint_paths], out_dir / "taint_paths.json")

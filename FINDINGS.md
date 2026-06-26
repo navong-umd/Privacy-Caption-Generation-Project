@@ -76,3 +76,16 @@
   Other≈0); clamping pos_weight to [0.1,10] keeps BCE stable on tiny batches.
 - Bootstrap result (WEAK, not real): practice micro-F1 0.97 / macro-F1 0.71; purpose 0.86 / 0.62.
   High micro-F1 reflects the GNN learning the heuristic, not real privacy semantics.
+
+## §I — Real-APK validation (scale)
+- The APG adapter ran on the bundled real APK — it is the **F-Droid client** (`org.fdroid.fdroid`):
+  **18,427 classes, 98,724 methods, 1,528,774 statements, 413,897 CALLS, 1,509,885 ICFG, 286,602 DDG**
+  (androguard XREF build ≈34 s; total a few minutes). Confirms the Neo4j-free adapter mirrors Stage 2.
+- **Real-data robustness bug found + fixed:** decompiled smali `code`/`callee` strings contain NULL
+  bytes / control chars, which lxml's GraphML writer rejects (`ValueError: All strings must be XML
+  compatible`). Fix: write the pickle first (authoritative, robust), sanitize all attrs for GraphML
+  via a codepoint filter, and wrap GraphML in try/except so the pipeline never aborts on it. CSV
+  export (pandas) is unaffected. This only surfaces on real APKs, not the synthetic fixture — a good
+  argument for always smoke-testing on a real APK.
+- **Scale note:** taint is depth-capped (`max_depth`), so per-source BFS stays bounded even on a
+  1.5M-statement graph; this is what keeps a real APK tractable without a full points-to analysis.
