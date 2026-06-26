@@ -88,3 +88,12 @@
 - **Tests:** `tests/test_step4_eval.py` — 7 passed (metric bounds, no-ref + with-ref caption eval,
   completeness, classification skip + with-checkpoint, full report banner). **Suite: 40 passed.**
 - **Status:** done (real caption/classification numbers await G1).
+
+## Phase H — User study instrument (Gate G3)
+- `step4_userstudy/`: `protocol.md` (RQs, blind A/B ppg-vs-baseline design, analysis plan),
+  `consent_template.md`, `build_study.py` (study_tasks.json + study_packet.md + blank
+  ratings_template.csv), `ingest_ratings.py` (per-condition Likert means, would-include rate,
+  inter-rater agreement — computed only from supplied human ratings). `HANDOFF_G3.md`.
+- **Tests:** `tests/test_step4_userstudy.py` — 2 passed (instrument outputs; synthetic-ratings
+  ingestion direction). **Suite: 42 passed.**
+- **Status:** done (running the study with humans is the gate).
