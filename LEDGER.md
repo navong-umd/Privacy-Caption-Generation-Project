@@ -56,3 +56,14 @@
 - `HANDOFF_G2.md` written. **Tests:** `tests/test_step2_convgnn.py` — 3 passed (shapes, forward,
   end-to-end training). **Suite: 23 passed.**
 - **Status:** done (real metrics await G1 human labels).
+
+## Phase E — Caption generation
+- `step3_caption/`: `llm_interface.py` (pluggable provider; OFFLINE deterministic `mock` default +
+  key-gated anthropic/openai/llama/deepseek), `code2seq_baseline.py` (untrained placeholder baseline),
+  `generate.py` (ICL prompt + per-PRCS caption + baseline → captions.json/csv). `configs/llm.yaml`.
+- Mock caption is grounded 4–5 lines (PI + practice + sink + purpose + LINDDUN threat); baseline is
+  a terse seq2seq-style line. Captions from WEAK labels carry the weak banner.
+- Added `pi_category` to PRCS records for structured captioning.
+- **Tests:** `tests/test_step3_caption.py` — 6 passed (deterministic mock, default provider,
+  key-gated error, baseline, prompt, dataset run). **Suite: 29 passed.**
+- **Status:** done (real LLM prose needs an API key — documented in llm.yaml).

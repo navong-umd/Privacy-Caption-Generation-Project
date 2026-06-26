@@ -1,0 +1,25 @@
+# Caption generation / LLM provider config (Phase E). EDITABLE.
+# Default provider is the OFFLINE deterministic mock so the pipeline + tests run with NO
+# network and NO API keys. Switch `provider` and set the key env var to use a real model.
+
+provider: mock            # mock | anthropic | openai | llama | deepseek
+max_tokens: 220
+temperature: 0.2
+
+# Real providers read their key from the named environment variable (never hard-code keys).
+providers:
+  anthropic: {model: claude-opus-4-8, api_key_env: ANTHROPIC_API_KEY}
+  openai:    {model: gpt-4o,           api_key_env: OPENAI_API_KEY}
+  llama:     {model: llama-3-70b,      api_key_env: LLAMA_API_KEY, base_url_env: LLAMA_BASE_URL}
+  deepseek:  {model: deepseek-chat,    api_key_env: DEEPSEEK_API_KEY, base_url_env: DEEPSEEK_BASE_URL}
+
+# In-context learning examples shown to the model (used by real providers' prompt).
+icl_examples:
+  - pi: location
+    practice: [Collecting, Sharing]
+    purpose: [Advertisement]
+    caption: "This app collects your location and shares it with an advertising service to show targeted ads."
+  - pi: device identifier
+    practice: [Collecting, Processing]
+    purpose: [Analytics]
+    caption: "This app reads your device identifier and sends it to an analytics service to measure app usage."

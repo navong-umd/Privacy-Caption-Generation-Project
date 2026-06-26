@@ -46,6 +46,7 @@ class PRCS:
     sink_api: str
     sink_type: str
     pi_type: str
+    pi_category: str
     permission: str
     privacy_threat: str
     hop_count: int
@@ -155,6 +156,7 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
             sink_api=snk_d.get("callee", ""),
             sink_type=snk_d.get("sink_type", ""),
             pi_type=src_d.get("pi_type", ""),
+            pi_category=src_d.get("category", ""),
             permission=src_d.get("permission", ""),
             privacy_threat=snk_d.get("privacy_threat", ""),
             hop_count=len(path) - 1,
