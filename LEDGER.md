@@ -97,3 +97,14 @@
 - **Tests:** `tests/test_step4_userstudy.py` — 2 passed (instrument outputs; synthetic-ratings
   ingestion direction). **Suite: 42 passed.**
 - **Status:** done (running the study with humans is the gate).
+
+## Phase I — Final integration (Gate G4 for real APKs)
+- `adapters/run_apg_csv.py`: real .apk → APG CSVs without Neo4j (mirrors Stage 2; original untouched).
+- `pipeline/run_pipeline.py`: ONE command chaining [APK→APG]→PPG→PRCS→ADPPG→ConvGNN→captions→
+  policy→eval→study. Ran on 8-app fixture: 48 sources/sinks/paths → 48 PRCS → 8 policies → eval
+  (BOOTSTRAP, completeness 1.0) → 20 study tasks.
+- `HANDOFF_G4.md` (Androzoo); `FINAL_REPORT.md`; PROJECT.md progress tracker finalized.
+- **Tests:** `tests/test_pipeline_e2e.py` — 1 passed (fixture → policy+eval, all artifacts on disk).
+- **Full suite: 43 passed, 81% coverage** (uncovered = APK adapter + Neo4j loader: external-resource paths).
+- Real-APK smoke (sample.apk via androguard) attempted — see follow-up note.
+- **Status:** done.

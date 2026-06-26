@@ -162,9 +162,15 @@ python -m pipeline.run_pipeline --apg data/fixtures/synthetic_apg_large --out da
 - ✅ Stage 2 APG (existing)
 - ✅ Stage 3 KB / API→PI (existing)
 - ✅ Stage 4 PPG (this build)
-- 🚧 Step 2 PRCS / ADPPG / ConvGNN
-- ⬜ Step 3 Caption / Policy
-- ⬜ Step 4 Evaluation / User study
+- ✅ Step 2 PRCS extraction
+- ✅ Step 2 ADPPG dataset (WEAK labels; human labels gated G1)
+- ✅ Step 2 ConvGNN (trains end-to-end; real metrics gated G1/G2)
+- ✅ Step 3 Caption generation (offline mock; real LLM key-gated)
+- ✅ Step 3 Policy/notice assembly + GDPR/CCPA mapping
+- ✅ Step 4 Evaluation harness (banner-gated; real numbers gated G1/G4)
+- ✅ Step 4 User-study instrument (running it is gated G3)
+- ✅ One-command pipeline + real-APK adapter
+- ⬜ Human gates: G1 annotation · G2 real metrics · G3 user study · G4 APK corpus
 
 ## 10. What's Next (ordered)
 1. **G1** — real human annotation in Codr → real ADPPG ground truth.
