@@ -11,6 +11,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 SYNTH_APG = REPO_ROOT / "data" / "fixtures" / "synthetic_apg"
+SYNTH_APG_LARGE = REPO_ROOT / "data" / "fixtures" / "synthetic_apg_large"
 PPG_CONFIG = REPO_ROOT / "configs" / "ppg.yaml"
 
 
@@ -28,3 +29,17 @@ def ppg_builder(tmp_path_factory):
     out = tmp_path_factory.mktemp("ppg")
     builder = build_ppg(str(SYNTH_APG), str(PPG_CONFIG), str(out))
     return builder, out
+
+
+@pytest.fixture(scope="session")
+def dataset_dir(tmp_path_factory):
+    """Run PPG->PRCS->ADPPG on the 8-app fixture for meaningful train/val/test splits."""
+    from stage4_ppg.build_ppg import build_ppg
+    from step2_prcs.extract_prcs import extract_prcs
+    from step2_dataset.build_dataset import build_dataset
+
+    root = tmp_path_factory.mktemp("pipe")
+    build_ppg(str(SYNTH_APG_LARGE), str(PPG_CONFIG), str(root / "ppg"))
+    extract_prcs(str(root / "ppg"), str(root / "prcs"))
+    build_dataset(str(root / "prcs"), str(root / "dataset"))
+    return root / "dataset"

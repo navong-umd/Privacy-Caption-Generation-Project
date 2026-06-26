@@ -32,3 +32,14 @@
 - **Tests:** `tests/test_step2_prcs.py` — 5 passed (counts, fields/subgraph, inter-procedural,
   deterministic id, index CSV + JSON roundtrip). **Suite: 13 passed.**
 - **Status:** done.
+
+## Phase C — ADPPG dataset (Gate G1)
+- `step2_dataset/weak_labeler.py` (WEAK heuristic Practice+Purpose, banner-labeled),
+  `build_dataset.py` (labels → adppg.jsonl + Codr export + leakage-free APK-grouped splits +
+  labels.csv; auto-overrides with `human_labels.json` when present), `configs/weak_labels.yaml`.
+- Tiny fixture (2 apps) → 12 PRCS; weak dist: practice Processing12/Collecting12/Sharing8,
+  purpose Functionality6/Advertisement2/Analytics4. 8-app fixture → non-empty train/val/test.
+- `HANDOFF_G1.md` written (Codr flow + human_labels.json schema + auto-pickup).
+- **Tests:** `tests/test_step2_dataset.py` — 7 passed (weak rules, outputs, leakage-free splits,
+  multihot CSV, Codr shape). **Suite: 20 passed.**
+- **Status:** done (build-around complete; real labels await human Codr — G1).

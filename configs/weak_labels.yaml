@@ -1,0 +1,25 @@
+# WEAK heuristic label rules (Phase C). EDITABLE.
+# These produce BOOTSTRAP labels ONLY so training can run before human Codr annotation.
+# Never treat as ground truth. SDK package lists live in configs/sdk_catalog.yaml.
+
+# Practice head: sink_type -> Practice labels (multi-label, unioned).
+practice_by_sink:
+  network:           [Sharing, Processing]
+  ipc:               [Sharing, Processing]
+  storage:           [Collecting, Processing]
+  logging:           [Processing]
+  serialization:     [Processing]
+  heuristic_unknown: [Sharing]
+# Applied to every PRCS because a PRCS always begins at a PI source (data is obtained).
+practice_source_default: [Collecting]
+practice_fallback: [Other]
+
+# Purpose head: driven by third-party SDK detection on the PRCS's involved classes.
+purpose_advertisement: [Advertisement]
+purpose_analytics:     [Analytics]
+purpose_default:       [Functionality]   # first-party / framework code
+
+splits:
+  seed: 13
+  ratios: {train: 0.7, val: 0.15, test: 0.15}
+  group_by: app_package      # leakage-free: an APK appears in exactly one split

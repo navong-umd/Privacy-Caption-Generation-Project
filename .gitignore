@@ -6,15 +6,8 @@ __pycache__/
 htmlcov/
 *.egg-info/
 
-# Generated pipeline outputs (regenerable; fixtures are force-kept below)
-data/ppg/
-data/prcs/
-data/dataset/
-data/captions/
-data/policy/
-data/run/
-data/apg/
-
-# Keep the committed synthetic fixtures so tests pass on a fresh checkout
+# Generated pipeline outputs (regenerable). Everything under data/ is ignored...
+data/*
+# ...except the committed synthetic fixtures, so tests pass on a fresh checkout.
 !data/fixtures/
 !data/fixtures/**
