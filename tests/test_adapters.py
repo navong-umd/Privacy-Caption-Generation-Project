@@ -50,6 +50,25 @@ def test_androzoo_pick_highest_vercode():
     assert "com.z" not in pick_from_rows(_AZ_ROWS, ["com.z"])
 
 
+_AZ_SIZED = [
+    {"sha256": "SMALL_OLD", "pkg_name": "com.x", "vercode": "10", "apk_size": str(5_000_000)},
+    {"sha256": "MID", "pkg_name": "com.x", "vercode": "20", "apk_size": str(20_000_000)},
+    {"sha256": "HUGE_NEW", "pkg_name": "com.x", "vercode": "30", "apk_size": str(200_000_000)},
+]
+
+
+def test_androzoo_size_cap_picks_newest_under_cap():
+    # cap 25MB -> newest version <= 25MB is MID (vc20), not the 200MB newest
+    out = pick_from_rows(_AZ_SIZED, ["com.x"], max_mb=25)
+    assert out["com.x"]["sha256"] == "MID"
+
+
+def test_androzoo_size_cap_falls_back_to_smallest():
+    # cap 1MB -> nothing under cap -> smallest available (5MB)
+    out = pick_from_rows(_AZ_SIZED, ["com.x"], max_mb=1)
+    assert out["com.x"]["sha256"] == "SMALL_OLD"
+
+
 def test_redact_hides_apikey():
     masked = redact("https://androzoo.uni.lu/api/download?apikey=SECRET123&sha256=H")
     assert "SECRET123" not in masked and "apikey=***" in masked

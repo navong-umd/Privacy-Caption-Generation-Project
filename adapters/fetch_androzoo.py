@@ -101,9 +101,15 @@ def get_api_key(env_names: Optional[List[str]] = None) -> str:
         f"No AndroZoo key found. Set one of {DEFAULT_KEY_ENVS} in .env or the environment.")
 
 
-def pick_from_rows(rows: Iterable[dict], packages: List[str]) -> Dict[str, dict]:
-    """Pure: from AndroZoo index rows, pick the highest-vercode sha256 per package. Offline-testable."""
+def pick_from_rows(rows: Iterable[dict], packages: List[str],
+                   max_mb: Optional[float] = None) -> Dict[str, dict]:
+    """Pure: pick a sha256 per package. Default = newest (highest vercode).
+
+    With max_mb set, prefer the newest version whose apk_size <= max_mb; if a package has no
+    version under the cap, fall back to its smallest available version. Offline-testable.
+    """
     want = set(packages)
+    cap = max_mb * 1e6 if max_mb else None
     best: Dict[str, dict] = {}
     for r in rows:
         pkg = r.get("pkg_name")
@@ -113,18 +119,37 @@ def pick_from_rows(rows: Iterable[dict], packages: List[str]) -> Dict[str, dict]
             vc = int(r.get("vercode") or 0)
         except ValueError:
             vc = 0
-        if pkg not in best or vc > best[pkg]["vercode"]:
-            best[pkg] = {"sha256": r.get("sha256"), "vercode": vc,
-                         "apk_size": r.get("apk_size"), "markets": r.get("markets")}
+        try:
+            size = int(r.get("apk_size") or 0)
+        except ValueError:
+            size = 0
+        cand = {"sha256": r.get("sha256"), "vercode": vc, "apk_size": size,
+                "markets": r.get("markets")}
+        cur = best.get(pkg)
+        if cap is None:
+            if cur is None or vc > cur["vercode"]:
+                best[pkg] = cand
+            continue
+        under = 0 < size <= cap
+        cur_under = cur and 0 < cur["apk_size"] <= cap
+        if cur is None:
+            best[pkg] = cand
+        elif under and not cur_under:
+            best[pkg] = cand                          # prefer any under-cap version
+        elif under and cur_under and vc > cur["vercode"]:
+            best[pkg] = cand                          # newest among under-cap
+        elif not under and not cur_under and 0 < size < cur["apk_size"]:
+            best[pkg] = cand                          # no under-cap yet -> keep smallest
     return best
 
 
-def resolve_from_index(index_path: str, packages: List[str]) -> Dict[str, dict]:
+def resolve_from_index(index_path: str, packages: List[str],
+                       max_mb: Optional[float] = None) -> Dict[str, dict]:
     """Stream the AndroZoo index (csv or csv.gz) and resolve packages -> sha256."""
     p = Path(index_path)
     opener = gzip.open if p.suffix == ".gz" else open
     with opener(p, "rt", encoding="utf-8", newline="") as f:
-        return pick_from_rows(csv.DictReader(f), packages)
+        return pick_from_rows(csv.DictReader(f), packages, max_mb=max_mb)
 
 
 def download_by_sha256(sha256: str, out_dir: Path, key: str, timeout: int = 120) -> Path:
