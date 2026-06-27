@@ -60,8 +60,12 @@ def _read_vars(insn) -> List[str]:
     return [a.strip() for a in args[1:] if a.strip()] if len(args) > 1 else []
 
 
-def run_apg_csv(apk_path: str, out_dir: str) -> APG:
-    """Disassemble an APK with androguard and write APG CSVs (mirrors Stage 2)."""
+def run_apg_csv(apk_path: str, out_dir: str | None, write: bool = True) -> APG:
+    """Disassemble an APK with androguard and (optionally) write APG CSVs (mirrors Stage 2).
+
+    write=False returns the in-memory APG without touching disk (used by the corpus runner to
+    avoid writing ~1 GB of APG CSVs per app on a disk-constrained machine).
+    """
     from androguard.misc import AnalyzeAPK  # lazy: only needed for real APKs
 
     log.info("Analyzing APK: %s", apk_path)
@@ -103,8 +107,11 @@ def run_apg_csv(apk_path: str, out_dir: str) -> APG:
             if w:
                 defs[w] = sid
 
-    write_apg(apg, out_dir)
-    log.info("Wrote APG CSVs: %s", apg.summary())
+    if write and out_dir:
+        write_apg(apg, out_dir)
+        log.info("Wrote APG CSVs: %s", apg.summary())
+    else:
+        log.info("Built APG in memory: %s", apg.summary())
     return apg
 
 
