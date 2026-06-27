@@ -4,7 +4,28 @@
 (`configs/weak_labels.yaml`), which are NOT ground truth. Real Practice/Purpose labels
 require human annotation. Everything around this gate is built; only the human step is missing.
 
-## What you do
+## Fastest path (no Codr setup) — a fill-in spreadsheet
+1. Generate a flat annotation sheet from the dataset:
+   ```
+   python -m step2_dataset.make_annotation_sheet --dataset data/dataset --out data/dataset/annotation_sheet.csv
+   ```
+   One row per PRCS with the code snippet + source/sink APIs + a `weak_*` reference column, plus
+   8 blank label columns: `P_Processing P_Collecting P_Sharing P_Other` and
+   `U_Functionality U_Advertisement U_Analytics U_Other`.
+2. Open it in Excel/Sheets and put **1** in every Practice (`P_*`) and Purpose (`U_*`) column that
+   applies to that code segment (multi-label — more than one is fine). Leave non-applicable blank.
+   (Add `--prefill` to start from the weak guess and just correct it — faster, but check each.)
+3. Convert the filled sheet to the labels file the pipeline reads:
+   ```
+   python -m step2_dataset.ingest_annotations --sheet data/dataset/annotation_sheet.csv --out data/dataset/human_labels.json
+   ```
+4. Rebuild + retrain — weak labels are auto-overridden and the BOOTSTRAP banner clears:
+   ```
+   python -m step2_dataset.build_dataset --prcs data/prcs --out data/dataset --human-labels data/dataset/human_labels.json
+   python -m step2_convgnn.train --config configs/convgnn.yaml --dataset data/dataset
+   ```
+
+## Alternative: Codr tool
 1. **Generate the Codr-ready records** (already produced by the dataset builder):
    ```
    python -m step2_dataset.build_dataset --prcs data/prcs --out data/dataset
