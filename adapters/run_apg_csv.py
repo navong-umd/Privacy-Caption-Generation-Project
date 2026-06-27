@@ -66,6 +66,12 @@ def run_apg_csv(apk_path: str, out_dir: str | None, write: bool = True) -> APG:
     write=False returns the in-memory APG without touching disk (used by the corpus runner to
     avoid writing ~1 GB of APG CSVs per app on a disk-constrained machine).
     """
+    # Silence androguard's loguru DEBUG spam (a line PER method -> gigabytes of logs on real APKs).
+    try:
+        from loguru import logger as _loguru
+        _loguru.remove()
+    except Exception:
+        pass
     from androguard.misc import AnalyzeAPK  # lazy: only needed for real APKs
 
     log.info("Analyzing APK: %s", apk_path)

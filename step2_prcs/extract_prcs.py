@@ -86,36 +86,65 @@ def _idx(stmt_id: str) -> int:
         return 0
 
 
-def _slice(G: nx.MultiDiGraph, methods: Set[str]) -> Set[str]:
-    """Collect nodes for the PRCS: methods, their classes/statements, and overlay nodes."""
-    nodes: Set[str] = set()
-    for m in methods:
-        if m not in G:
-            continue
-        nodes.add(m)
-        nodes.add(method_class(m))                       # class node
-        for s in _method_statements(G, m):
-            nodes.add(s)
-            # privacy overlay attached to this statement (Source/Sink + their DataItem/Store/...)
-            for _, ov, k in G.out_edges(s, keys=True):
-                if k == "PRIVACY_RELATION":
-                    nodes.add(ov)
-                    for _, ov2, k2 in G.out_edges(ov, keys=True):
-                        if k2 == "PRIVACY_RELATION":
-                            nodes.add(ov2)
+# Bound PRCS subgraphs so real-app methods (which can hold thousands of statements) don't
+# produce multi-MB slices. We keep the flow + a small local neighborhood, capped.
+CONTEXT_HOPS = 1
+MAX_SUBGRAPH_NODES = 150
+
+
+def _slice(G: nx.MultiDiGraph, path_nodes: List[str], hops: int = CONTEXT_HOPS,
+           max_nodes: int = MAX_SUBGRAPH_NODES) -> Set[str]:
+    """Bounded slice: the taint path + its enclosing method/class + privacy overlay +
+    a `hops`-hop neighborhood (for local structure), capped at max_nodes."""
+    must: Set[str] = set(n for n in path_nodes if n in G)
+    for s in list(must):
+        mid = G.nodes[s].get("method_id") or stmt_method_id(s)
+        if mid in G:
+            must.add(mid)
+            must.add(method_class(mid))
+        # privacy overlay attached to this statement (Source/Sink + DataItem/Store/Component)
+        for _, ov, k in G.out_edges(s, keys=True):
+            if k == "PRIVACY_RELATION":
+                must.add(ov)
+                for _, ov2, k2 in G.out_edges(ov, keys=True):
+                    if k2 == "PRIVACY_RELATION":
+                        must.add(ov2)
+
+    # add a small neighborhood around the path as context, until the cap
+    nodes = set(must)
+    frontier = set(path_nodes) & set(G.nodes)
+    for _ in range(hops):
+        nxt: Set[str] = set()
+        for n in frontier:
+            for _, v, _k in G.out_edges(n, keys=True):
+                nxt.add(v)
+            for u, _, _k in G.in_edges(n, keys=True):
+                nxt.add(u)
+        for n in nxt:
+            if len(nodes) >= max_nodes:
+                break
+            nodes.add(n)
+        frontier = nxt
+        if len(nodes) >= max_nodes:
+            break
     return nodes
 
 
-def _build_snippet(G: nx.MultiDiGraph, methods: List[str]) -> str:
-    """Render a readable code snippet: one block per involved method."""
-    blocks = []
-    for m in methods:
-        if m not in G:
+def _build_snippet(G: nx.MultiDiGraph, path: List[str]) -> str:
+    """Render the FLOW (the statements on the taint path), grouped by method, in order."""
+    blocks: List[str] = []
+    cur_method, lines = None, []
+    for s in path:
+        if s not in G:
             continue
-        lines = [f"// {m}"]
-        for s in _method_statements(G, m):
-            code = G.nodes[s].get("code", "") or G.nodes[s].get("type", "")
-            lines.append(f"  {code}")
+        mid = G.nodes[s].get("method_id") or stmt_method_id(s)
+        if mid != cur_method:
+            if lines:
+                blocks.append("\n".join(lines))
+            cur_method, lines = mid, [f"// {mid}"]
+        code = G.nodes[s].get("code", "") or G.nodes[s].get("type", "")
+        lines.append(f"  {code}")
+    if lines:
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
 
@@ -136,7 +165,7 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
             if mid not in methods:
                 methods.append(mid)
 
-        node_ids = _slice(G, set(methods))
+        node_ids = _slice(G, path)
         sub = G.subgraph(node_ids)
         nodes = [{"id": n, **{k: G.nodes[n].get(k) for k in
                               ("label", "type", "callee", "code", "is_source", "is_sink",
@@ -162,7 +191,7 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
             permission=src_d.get("permission", ""),
             privacy_threat=snk_d.get("privacy_threat", ""),
             hop_count=len(path) - 1,
-            code_snippet=_build_snippet(G, methods),
+            code_snippet=_build_snippet(G, path),
             subgraph={"nodes": nodes, "edges": edges},
             involved_methods=methods,
         )
