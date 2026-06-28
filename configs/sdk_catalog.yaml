@@ -6,18 +6,52 @@ advertisement:
   - com.google.ads
   - com.google.android.gms.ads
   - com.facebook.ads
+  - com.facebook.audiencenetwork
   - com.mopub
   - com.applovin
   - com.unity3d.ads
+  - com.unity3d.services
   - com.inmobi
   - com.adcolony
   - com.chartboost
   - com.vungle
   - com.ironsource
+  - com.bytedance.sdk.openadsdk      # Pangle (TikTok/ByteDance ad network)
+  - com.bytedance.pangle
+  - com.pgl.sys                       # Pangle support
+  - com.amazon.device.ads
+  - com.fyber
+  - com.tapjoy
+  - com.smaato
+  - com.startapp
+  - com.appnext
+  - com.mbridge
+  - com.mintegral
+  - com.pubmatic
+  - com.criteo
+  - com.yandex.mobile.ads
+  - com.my.target
+  - com.appbrain
+  - com.outbrain
+  - com.taboola
+  - io.presage                       # Ogury
+  - com.ogury
+  - com.appodeal
+  - com.adsbynimbus
+  - net.pubnative
+  - com.bidmachine
+  - com.five_corp.ad
+  - com.nativex
+  - com.digitalturbine
 
 analytics:
   - com.google.firebase.analytics
+  - com.google.firebase.crashlytics
+  - com.google.firebase.perf
   - com.google.android.gms.analytics
+  - com.google.android.gms.measurement
+  - com.facebook.appevents            # Facebook analytics / app events
+  - com.bytedance.applog              # ByteDance/TikTok analytics
   - com.flurry
   - com.mixpanel
   - com.amplitude
@@ -26,6 +60,29 @@ analytics:
   - io.branch
   - com.appsflyer
   - com.adjust.sdk
+  - com.localytics
+  - com.kochava
+  - com.singular
+  - com.tenjin
+  - com.bugsnag
+  - io.sentry
+  - com.newrelic
+  - com.datadog
+  - com.instabug
+  - com.smartlook
+  - com.fullstory
+  - com.braze
+  - com.appboy
+  - com.urbanairship
+  - com.leanplum
+  - com.clevertap
+  - com.onesignal
+  - com.yandex.metrica
+  - ly.count.android                  # Countly
+  - com.umeng                         # Umeng analytics
+  - org.matomo
+  - com.heap
+  - io.embrace
 
 # Packages treated as first-party / framework (Purpose -> Functionality by default).
 functionality_hint:

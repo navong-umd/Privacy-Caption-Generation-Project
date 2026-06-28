@@ -6,8 +6,9 @@ Output:  best checkpoint (best.pt), train_log.csv (per-epoch), metrics.csv (fina
 Deterministic seeds, BCEWithLogits + pos_weight, attention readout, early stopping on
 val macro-F1, checkpointing, CSV + optional TensorBoard logs.
 
-If ANY split is WEAK-labeled, every reported metric is printed under a BOOTSTRAP banner
-(not a real result). Real numbers require human labels (Gate G1) — see HANDOFF_G2.md.
+If the TEST split is WEAK-labeled, every reported metric is printed under a BOOTSTRAP banner
+(not a real result). Metrics are reported on test, so a human-labeled test split (Gate G1)
+clears the banner even while train stays weak (weak supervision) — see HANDOFF_G2.md.
 
 Run: python -m step2_convgnn.train --config configs/convgnn.yaml --dataset data/dataset
 """
@@ -81,8 +82,11 @@ def train(config: str, dataset_dir: str, out_dir: str | None = None,
     out = ensure_dir(out_dir or cfg["paths"]["out_dir"])
 
     splits = load_splits(dataset_dir)
-    is_weak = any(getattr(g, "label_source", "weak") == "weak"
-                  for s in splits.values() for g in s)
+    # Metrics are reported on the TEST split, so the BOOTSTRAP banner keys off test only:
+    # training on weak labels but evaluating on a human-labeled test set is a real result.
+    # (Matches step4_eval.evaluate, so a single human-labeled held-out app clears the banner.)
+    eval_split = splits.get("test") or splits.get("val") or splits.get("train") or []
+    is_weak = any(getattr(g, "label_source", "weak") == "weak" for g in eval_split)
     n_epochs = epochs or tc["epochs"]
 
     bs = tc["batch_size"]
