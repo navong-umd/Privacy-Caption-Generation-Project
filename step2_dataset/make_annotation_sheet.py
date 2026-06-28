@@ -75,13 +75,19 @@ def _select_records(records: list, sample: int, seed: int, oversample_rare: bool
 
 
 def make_sheet(dataset_dir: str, out_csv: str, prefill: bool = False,
-               sample: int = 0, seed: int = 0, oversample_rare: bool = True) -> int:
+               sample: int = 0, seed: int = 0, oversample_rare: bool = True,
+               split: str = "") -> int:
     """Write the annotation sheet; returns the number of PRCS rows.
 
+    split in {train,val,test} restricts to that split (label just the held-out test set).
     sample>0 writes a stratified subset (~even across apps, rare purposes forced in); sample<=0 = all.
     """
     records = [json.loads(l) for l in
                (Path(dataset_dir) / "adppg.jsonl").read_text(encoding="utf-8").splitlines()]
+    if split:
+        ids = set(json.loads((Path(dataset_dir) / "splits.json").read_text(encoding="utf-8"))
+                  .get(split, []))
+        records = [r for r in records if r["prcs_id"] in ids]
     records = _select_records(records, sample, seed, oversample_rare)
     out = Path(out_csv)
     ensure_dir(out.parent)
@@ -119,10 +125,12 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0, help="sampling seed (reproducible)")
     ap.add_argument("--no-oversample-rare", action="store_true",
                     help="do not force rare purposes (Analytics/Advertisement) into the sample")
+    ap.add_argument("--split", default="", choices=["", "train", "val", "test"],
+                    help="restrict to one split (e.g. test = label just the held-out eval app)")
     args = ap.parse_args()
     n = make_sheet(args.dataset, args.out, args.prefill,
                    sample=args.sample, seed=args.seed,
-                   oversample_rare=not args.no_oversample_rare)
+                   oversample_rare=not args.no_oversample_rare, split=args.split)
     print(f"[+] {n} rows -> {args.out}")
     print("    Mark 1 in the P_* (Practice) and U_* (Purpose) columns that apply, then run:")
     print("    python -m step2_dataset.ingest_annotations --sheet "

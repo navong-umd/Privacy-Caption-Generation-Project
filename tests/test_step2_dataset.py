@@ -48,6 +48,27 @@ def test_dataset_build_outputs(dataset_dir):
     assert splits["test"], "expected a non-empty test split with 8 apps"
 
 
+def test_pinned_test_app_and_cap(dataset_dir, tmp_path):
+    """test_app pins one app to the test split; test_cap subsamples it; still leakage-free."""
+    import collections
+
+    from step2_dataset.build_dataset import build_dataset
+    recs = [json.loads(l) for l in (dataset_dir / "adppg.jsonl").read_text().splitlines()]
+    app, cnt = collections.Counter(r["app_package"] for r in recs).most_common(1)[0]
+    cap = max(1, cnt // 2)
+
+    out = tmp_path / "ds_pin"
+    build_dataset(str(dataset_dir.parent / "prcs"), str(out), test_app=app, test_cap=cap)
+    splits = load_json(out / "splits.json")
+    id2app = {json.loads(l)["prcs_id"]: json.loads(l)["app_package"]
+              for l in (out / "adppg.jsonl").read_text().splitlines()}
+
+    assert {id2app[i] for i in splits["test"]} == {app}          # pinned app == test split
+    assert 0 < len(splits["test"]) <= cap                        # subsampled to the cap
+    assert app not in {id2app[i] for i in splits["train"] + splits["val"]}   # no leakage
+    assert splits["train"] and splits["val"]                     # other apps fill train/val
+
+
 def test_dataset_splits_are_leakage_free(dataset_dir):
     records = {json.loads(l)["prcs_id"]: json.loads(l)
                for l in (dataset_dir / "adppg.jsonl").read_text().splitlines()}

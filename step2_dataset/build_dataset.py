@@ -49,35 +49,65 @@ def _apply_labels(prcs: List[dict], labeler: WeakLabeler,
     return out
 
 
+def _subsample_test_app(records: List[dict], app: str, cap: int, seed: int,
+                        group_key: str = "app_package") -> List[dict]:
+    """Keep only `cap` flows of `app` (rare purposes first); drop the rest so the held-out test
+    app is small enough to hand-label. Other apps untouched -> still leakage-free."""
+    app_recs = [r for r in records if r.get(group_key) == app]
+    if not app_recs or len(app_recs) <= cap:
+        return records
+    rng = random.Random(seed)
+    rare = [r for r in app_recs
+            if any(p in ("Advertisement", "Analytics") for p in r["labels"]["purpose"])]
+    rare_ids = {r["prcs_id"] for r in rare}
+    common = [r for r in app_recs if r["prcs_id"] not in rare_ids]
+    rng.shuffle(rare); rng.shuffle(common)
+    keep_ids = {r["prcs_id"] for r in (rare + common)[:cap]}
+    log.info("Subsampled test app %s: %d -> %d flows (%d rare-purpose available)",
+             app, len(app_recs), len(keep_ids), len(rare))
+    return [r for r in records if r.get(group_key) != app or r["prcs_id"] in keep_ids]
+
+
 def _grouped_splits(records: List[dict], cfg: dict) -> Dict[str, List[str]]:
-    """Assign whole APK groups to train/val/test so no app leaks across splits."""
+    """Assign whole APK groups to train/val/test so no app leaks across splits.
+    If splits.test_app is set, that app is pinned to test and the rest split into train/val."""
     sc = cfg.get("splits", {})
     seed = sc.get("seed", 13)
     ratios = sc.get("ratios", {"train": 0.7, "val": 0.15, "test": 0.15})
     group_key = sc.get("group_by", "app_package")
+    test_app = sc.get("test_app")
 
     groups: Dict[str, List[str]] = {}
     for r in records:
         groups.setdefault(r.get(group_key, "?"), []).append(r["prcs_id"])
-    keys = sorted(groups)
-    random.Random(seed).shuffle(keys)
 
-    n = len(keys)
-    n_train = max(1, round(n * ratios["train"])) if n else 0
-    n_val = round(n * ratios["val"]) if n > 2 else (1 if n == 2 else 0)
-    train_g = keys[:n_train]
-    val_g = keys[n_train:n_train + n_val]
-    test_g = keys[n_train + n_val:]
-    # ensure test is non-empty when we have >=3 groups
-    if n >= 3 and not test_g:
-        test_g = [val_g.pop()] if val_g else [train_g.pop()]
+    if test_app and test_app in groups:
+        test_g = [test_app]
+        rest = [k for k in groups if k != test_app]
+        random.Random(seed).shuffle(rest)
+        denom = ratios["train"] + ratios["val"] or 1
+        n_val = round(len(rest) * ratios["val"] / denom) if len(rest) > 1 else 0
+        val_g = rest[:n_val]
+        train_g = rest[n_val:]
+    else:
+        keys = sorted(groups)
+        random.Random(seed).shuffle(keys)
+        n = len(keys)
+        n_train = max(1, round(n * ratios["train"])) if n else 0
+        n_val = round(n * ratios["val"]) if n > 2 else (1 if n == 2 else 0)
+        train_g = keys[:n_train]
+        val_g = keys[n_train:n_train + n_val]
+        test_g = keys[n_train + n_val:]
+        # ensure test is non-empty when we have >=3 groups
+        if n >= 3 and not test_g:
+            test_g = [val_g.pop()] if val_g else [train_g.pop()]
 
     splits = {"train": [], "val": [], "test": []}
     for g, ids in groups.items():
         bucket = "train" if g in train_g else "val" if g in val_g else "test"
         splits[bucket].extend(ids)
     log.info("Splits by %s: %d groups -> train=%d val=%d test=%d PRCS",
-             group_key, n, len(splits["train"]), len(splits["val"]), len(splits["test"]))
+             group_key, len(groups), len(splits["train"]), len(splits["val"]), len(splits["test"]))
     return splits
 
 
@@ -111,9 +141,15 @@ def _labels_csv(records: List[dict]) -> pd.DataFrame:
 
 
 def build_dataset(prcs_dir: str, out_dir: str, config: Optional[str] = None,
-                  human_labels: Optional[str] = None) -> dict:
-    """Build the ADPPG dataset; returns a summary dict."""
+                  human_labels: Optional[str] = None, test_app: Optional[str] = None,
+                  test_cap: Optional[int] = None) -> dict:
+    """Build the ADPPG dataset; returns a summary dict.
+
+    test_app pins one app as the held-out test split; test_cap subsamples it to that many flows
+    (so the test set is small enough to hand-label for a real metric while train stays weak)."""
     cfg = load_yaml(config or REPO_ROOT / "configs" / "weak_labels.yaml")
+    if test_app:
+        cfg.setdefault("splits", {})["test_app"] = test_app
     labeler = WeakLabeler()
     human = load_json(human_labels) if human_labels and Path(human_labels).exists() else {}
     if human:
@@ -121,6 +157,9 @@ def build_dataset(prcs_dir: str, out_dir: str, config: Optional[str] = None,
 
     prcs = _load_prcs(Path(prcs_dir))
     records = _apply_labels(prcs, labeler, human)
+    if test_app and test_cap:
+        records = _subsample_test_app(records, test_app, test_cap,
+                                      cfg.get("splits", {}).get("seed", 13))
     splits = _grouped_splits(records, cfg)
 
     out = ensure_dir(out_dir)
@@ -145,8 +184,13 @@ def main() -> None:
     ap.add_argument("--config", default="configs/weak_labels.yaml")
     ap.add_argument("--human-labels", default="data/dataset/human_labels.json",
                     help="optional human label overrides (Gate G1); used if the file exists")
+    ap.add_argument("--test-app", default=None,
+                    help="pin this app_package as the held-out test split")
+    ap.add_argument("--test-cap", type=int, default=None,
+                    help="subsample the test app to this many flows (small enough to hand-label)")
     args = ap.parse_args()
-    s = build_dataset(args.prcs, args.out, args.config, args.human_labels)
+    s = build_dataset(args.prcs, args.out, args.config, args.human_labels,
+                      test_app=args.test_app, test_cap=args.test_cap)
     print("\n=== ADPPG summary ===")
     if s["human"] == 0:
         print(f"  [{BANNER_WEAK}]")
