@@ -29,6 +29,27 @@ def test_prefill_uses_weak_guess(dataset_dir, tmp_path):
     assert any(r["P_Collecting"] == "1" for r in rows)
 
 
+def test_sample_is_stratified_and_capped(dataset_dir, tmp_path):
+    full = tmp_path / "full.csv"
+    total = make_sheet(str(dataset_dir), str(full))           # all rows
+    target = max(4, total // 2)
+
+    sub = tmp_path / "sub.csv"
+    n = make_sheet(str(dataset_dir), str(sub), sample=target, seed=0)
+    rows = list(csv.DictReader(sub.open(encoding="utf-8")))
+    assert n == len(rows) <= target                            # capped at the budget
+    assert len({r["prcs_id"] for r in rows}) == len(rows)      # unique PRCS
+    # spread across apps, not all drawn from one (fixture has 8 apps)
+    assert len({r["app_package"] for r in rows}) >= 2
+    # sample >= total returns everything (no-op)
+    assert make_sheet(str(dataset_dir), str(tmp_path / "all.csv"), sample=total + 99) == total
+
+    # reproducible for a fixed seed
+    sub2 = tmp_path / "sub2.csv"
+    make_sheet(str(dataset_dir), str(sub2), sample=target, seed=0)
+    assert sub.read_text(encoding="utf-8") == sub2.read_text(encoding="utf-8")
+
+
 def test_ingest_and_override(dataset_dir, tmp_path):
     sheet = tmp_path / "ann.csv"
     make_sheet(str(dataset_dir), str(sheet))
