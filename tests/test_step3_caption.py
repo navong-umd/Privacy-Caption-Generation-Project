@@ -55,3 +55,18 @@ def test_generate_captions_over_dataset(dataset_dir, tmp_path):
     assert all(c["weak_banner"] for c in caps)
     saved = json.loads((tmp_path / "cap" / "captions.json").read_text())
     assert len(saved) == len(caps)
+
+
+def test_caption_sampling_caps_calls(dataset_dir, tmp_path):
+    # --limit bounds total; --per-app bounds per package (so real-LLM runs stay cheap)
+    lim = generate_captions(str(dataset_dir), str(tmp_path / "lim"), limit=3)
+    assert len(lim) == 3
+    per = generate_captions(str(dataset_dir), str(tmp_path / "per"), per_app=1)
+    apps = [c["app_package"] for c in per]
+    assert len(apps) == len(set(apps))              # at most one caption per app
+
+
+def test_provider_override_does_not_need_config_change(dataset_dir, tmp_path):
+    # explicit provider='mock' override path (keeps the file's default untouched)
+    caps = generate_captions(str(dataset_dir), str(tmp_path / "ov"), provider="mock", limit=2)
+    assert len(caps) == 2 and all(c["provider"] == "mock" for c in caps)

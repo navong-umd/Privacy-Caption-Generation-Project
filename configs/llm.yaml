@@ -8,7 +8,8 @@ temperature: 0.2
 
 # Real providers read their key from the named environment variable (never hard-code keys).
 providers:
-  anthropic: {model: claude-opus-4-8, api_key_env: ANTHROPIC_API_KEY}
+  # sonnet is capable + far cheaper for high-volume captioning; bump to claude-opus-4-8 for max quality.
+  anthropic: {model: claude-sonnet-4-6, api_key_env: ANTHROPIC_API_KEY}
   openai:    {model: gpt-4o,           api_key_env: OPENAI_API_KEY}
   llama:     {model: llama-3-70b,      api_key_env: LLAMA_API_KEY, base_url_env: LLAMA_BASE_URL}
   deepseek:  {model: deepseek-chat,    api_key_env: DEEPSEEK_API_KEY, base_url_env: DEEPSEEK_BASE_URL}

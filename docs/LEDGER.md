@@ -186,3 +186,15 @@
 - **CAVEAT (no-fabrication):** the test labels are LLM-annotated, NOT yet human-verified. This is a
   preliminary real-pipeline metric, not publishable ground truth until the shortlist + a sample are
   human-checked (then report human-LLM kappa). Train remains weak (weak supervision). See FINDINGS §G2.
+
+## Phase L — Real-LLM caption wiring (Anthropic) — verified, blocked on account credits
+- User dropped `ANTHROPIC_API_KEY` in `.env`. Enhanced `step3_caption/generate.py`: `--provider`
+  override (does NOT mutate llm.yaml, so pipeline/tests stay on the offline mock), `--per-app`/`--limit`
+  caps (bound API cost on the 10,721-PRCS corpus), fail-fast with guidance on provider error (no silent
+  mock fallback). Set anthropic model default to `claude-sonnet-4-6` (cheaper at volume; opus available).
+- **Integration VERIFIED:** the call authenticated and was well-formed; Anthropic returned HTTP 400
+  `credit balance is too low`. So this is an EXTERNAL billing gate (not a code bug) — add credits to run.
+  Key handled safely throughout (load_dotenv name-only; .env gitignored; never printed/committed).
+- **Tests:** +2 offline (`tests/test_step3_caption.py`: sampling caps, provider override). **Suite: 71 passed.**
+- **Status:** ready — real captions will generate as soon as the account has credits:
+  `python -m step3_caption.generate --dataset data/corpus_run/dataset --out data/corpus_run/captions_llm --provider anthropic --per-app 3`
