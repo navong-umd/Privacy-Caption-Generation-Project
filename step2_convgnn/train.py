@@ -74,14 +74,15 @@ def _evaluate(model, loader, device) -> Dict[str, float]:
 
 
 def train(config: str, dataset_dir: str, out_dir: str | None = None,
-          epochs: int | None = None) -> Dict:
+          epochs: int | None = None, privacy_features: bool = True) -> Dict:
     cfg = load_yaml(config)
     tc = cfg["train"]
     set_seed(tc["seed"])
     device = torch.device("cpu")
     out = ensure_dir(out_dir or cfg["paths"]["out_dir"])
 
-    splits = load_splits(dataset_dir)
+    # privacy_features=False -> APG-only ablation (privacy overlay zeroed in node features).
+    splits = load_splits(dataset_dir, privacy_features=privacy_features)
     # Metrics are reported on the TEST split, so the BOOTSTRAP banner keys off test only:
     # training on weak labels but evaluating on a human-labeled test set is a real result.
     # (Matches step4_eval.evaluate, so a single human-labeled held-out app clears the banner.)

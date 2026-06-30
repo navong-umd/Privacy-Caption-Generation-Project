@@ -48,10 +48,17 @@ def _truthy(v) -> bool:
     return str(v).lower() in ("1", "true", "yes")
 
 
-def _node_features(n: dict) -> Tuple[int, List[float]]:
-    """Return (type_id, feature_vector) for one subgraph node."""
+def _node_features(n: dict, privacy_features: bool = True) -> Tuple[int, List[float]]:
+    """Return (type_id, feature_vector) for one subgraph node.
+
+    privacy_features=False is the APG-ONLY ablation: the node keeps its type embedding and
+    the graph keeps its structure/edges, but the PPG privacy overlay vector (source/sink/
+    permission/sink-type/PI-category) is zeroed — isolating the contribution of the overlay.
+    """
     type_id = _NODE_TYPE_IX.get(n.get("label", ""), _NODE_TYPE_IX["Statement"])
     feat = [0.0] * FEAT_DIM
+    if not privacy_features:
+        return type_id, feat
     feat[0] = 1.0 if _truthy(n.get("is_source")) else 0.0
     feat[1] = 1.0 if _truthy(n.get("is_sink")) else 0.0
     feat[2] = 1.0 if n.get("permission") else 0.0
@@ -66,13 +73,13 @@ def _node_features(n: dict) -> Tuple[int, List[float]]:
     return type_id, feat
 
 
-def record_to_data(rec: dict) -> Data:
+def record_to_data(rec: dict, privacy_features: bool = True) -> Data:
     """Convert one ADPPG record (with subgraph + labels) into a PyG Data graph."""
     nodes = rec["subgraph"]["nodes"]
     idx = {n["id"]: i for i, n in enumerate(nodes)}
     type_ids, feats = [], []
     for n in nodes:
-        t, f = _node_features(n)
+        t, f = _node_features(n, privacy_features)
         type_ids.append(t)
         feats.append(f)
 
@@ -102,8 +109,11 @@ def record_to_data(rec: dict) -> Data:
     return data
 
 
-def load_splits(dataset_dir: str | Path) -> Dict[str, List[Data]]:
-    """Load adppg.jsonl + splits.json -> {split: [Data,...]}."""
+def load_splits(dataset_dir: str | Path, privacy_features: bool = True) -> Dict[str, List[Data]]:
+    """Load adppg.jsonl + splits.json -> {split: [Data,...]}.
+
+    privacy_features=False loads the APG-ONLY ablation view (privacy overlay zeroed).
+    """
     dataset_dir = Path(dataset_dir)
     records = {}
     with open(dataset_dir / "adppg.jsonl", encoding="utf-8") as f:
@@ -112,5 +122,5 @@ def load_splits(dataset_dir: str | Path) -> Dict[str, List[Data]]:
             records[r["prcs_id"]] = r
     with open(dataset_dir / "splits.json", encoding="utf-8") as f:
         splits = json.load(f)
-    return {s: [record_to_data(records[pid]) for pid in ids if pid in records]
+    return {s: [record_to_data(records[pid], privacy_features) for pid in ids if pid in records]
             for s, ids in splits.items()}
