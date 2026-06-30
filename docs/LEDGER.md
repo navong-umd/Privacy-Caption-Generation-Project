@@ -198,3 +198,15 @@
 - **Tests:** +2 offline (`tests/test_step3_caption.py`: sampling caps, provider override). **Suite: 71 passed.**
 - **Status:** ready — real captions will generate as soon as the account has credits:
   `python -m step3_caption.generate --dataset data/corpus_run/dataset --out data/corpus_run/captions_llm --provider anthropic --per-app 3`
+
+## Phase L (cont.) — Real captions VERIFIED WORKING (OpenAI gpt-4o)
+- The provided key was an **OpenAI** key (read from `OPENAI_API_KEY` env). `--provider openai` works.
+  Anthropic remained credit-blocked; OpenAI account had credit. Same pluggable interface, no code change.
+- Generated **56 real captions** (8/app × 7 corpus apps, gpt-4o) → `data/corpus_run/captions_llm/`.
+  Rebuilt **policies** (`policy_llm/`) and the **Privacy Nutrition Facts app** (`app_llm/`) on the real
+  captions. The LLM captions are fluent user-facing prose and clearly beat the terse Code2Seq baseline
+  (the paper's PPG-informed-LLM vs code2seq comparison), e.g. Twitter db-info flow:
+  LLM "This app accesses your database information... processes and shares this data over the network..."
+  vs baseline "getCount value flows to applyAndAckSettings; app appears to share this data."
+- Cost-bounded by `--per-app`; pipeline default stays offline mock. Still no human caption references,
+  so BLEU/ROUGE remains "no references" — caption quality is a G3/user-study judgement.
