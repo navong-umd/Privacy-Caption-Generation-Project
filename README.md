@@ -5,9 +5,9 @@
 > program analysis, taint analysis, a privacy-semantic graph, a graph neural network,
 > and LLM caption/policy generation.
 
-**Branch:** `stage4-ppg-convgnn` · **Python** 3.14.0 · **Tests:** 58 green · **Real corpus:** 10,721 PRCS from 7 live apps
+**Branch:** `stage4-ppg-convgnn` · **Python** 3.14.0 · **Tests:** 69 green · **Real corpus:** 10,721 PRCS from 7 live apps
 
-📊 **[Open the visual dashboard →](docs/dashboard.html)** &nbsp;·&nbsp; 📁 [Full spec](docs/PROJECT.md) · [Findings](docs/FINDINGS.md) · [Final report](docs/FINAL_REPORT.md) · [Change log](docs/LEDGER.md)
+📊 **[Open the visual dashboard →](docs/dashboard.html)** &nbsp;·&nbsp; 🗂️ [Neo4j display guide](DISPLAY.md) &nbsp;·&nbsp; 📁 [Full spec](docs/PROJECT.md) · [Findings](docs/FINDINGS.md) · [Final report](docs/FINAL_REPORT.md) · [Change log](docs/LEDGER.md)
 
 ---
 
@@ -94,8 +94,10 @@ flowchart TD
 ## Where we are
 
 ### ✅ Built & tested (everything in the pipeline above)
-The full method — novel PPG + ConvGNN + caption/policy + eval + user-study instrument + a
-one-command pipeline + a real-APK adapter — is implemented, reproducible, and covered by **58 tests**.
+The full method — novel PPG + ConvGNN + caption/policy + eval + user-study instrument +
+**Neo4j display** (per-node `what_it_does`, Cypher query library, styling — see [DISPLAY.md](DISPLAY.md)) +
+**Stage 8 Privacy Nutrition Facts** (labels + a static viewer app) + a one-command pipeline +
+a real-APK adapter — is implemented, reproducible, and covered by **69 tests**.
 
 ### 🔬 Real-corpus run (G4 — done)
 `pipeline/run_corpus.py` processed **8 AndroZoo APKs fully in-memory** (APG→PPG→PRCS) into
@@ -115,16 +117,17 @@ one-command pipeline + a real-APK adapter — is implemented, reproducible, and 
 | Gate | What it unlocks | Status |
 |---|---|---|
 | **G4 — APK corpus** | real PRCS at scale | ✅ **done** — 10,721 PRCS from 7 apps |
-| **G1 — annotation** | real Practice/Purpose ground truth (replaces WEAK heuristic labels) | 🔄 **in progress** — tooling + pre-filled sheets staged; human labeling pending |
-| **G2 — real metrics** | non-bootstrap classification numbers | ⬜ automatic once a human-labeled **test split** lands |
+| **G1 — annotation** | real Practice/Purpose ground truth (replaces WEAK heuristic labels) | 🔄 **in progress** — LLM-assisted labels staged (95.1% two-pass agreement); 13-row human shortlist to verify |
+| **G2 — real metrics** | non-bootstrap classification numbers | 🔄 **preliminary** — practice macro-F1 **0.584** / purpose 0.258 on a 100-flow human-labeled TikTok test (labels LLM-derived, await human check) |
 | **G3 — user study** | does PPG beat the Code2Seq baseline for developers | ⬜ needs IRB approval + ≥12 developers |
 
 > ⚠️ **No-fabrication rule:** every number computed on WEAK heuristic labels or the synthetic fixture
-> carries a `BOOTSTRAP — not a real result` banner. The banner now keys off the **test split only**,
-> so labeling one held-out app clears it without re-labeling all 10,721 PRCS.
+> carries a `BOOTSTRAP — not a real result` banner (it keys off the **test split only**). The
+> preliminary G2 numbers use **LLM-annotated** test labels — real until a human verifies them, then
+> we report human–LLM agreement (κ).
 
-**Next:** user labels the staged starter sheet (42 rows) to watch the banner clear → labels a held-out
-test app (100 TikTok flows) for the **first real metric on real apps** → real-LLM caption tuning → G3 study.
+**Next:** human-verify the 13-row shortlist + a random sample (→ report κ) → real-LLM caption tuning →
+G3 developer study.
 
 ---
 
@@ -146,6 +149,12 @@ python -m pipeline.run_corpus --apks data/corpus --out data/corpus_run --precisi
 # the G1 → G2 loop (annotate → rebuild → retrain) in one shot:
 python run_g1g2.py
 
+# Privacy Nutrition Facts app (Stage 8) — opens data/run/app/index.html:
+python -m step4_app.build_app --dataset data/run/dataset --captions data/run/captions --out data/run/app
+
+# Neo4j display — list/inspect the Cypher query library (offline), or --run against a server:
+python -m stage4_ppg.cypher_runner --list
+
 # tests:
 python -m pytest tests/ -q
 ```
@@ -158,7 +167,7 @@ Individual stages and the real-APK / AndroZoo adapters are documented in
 ## Repo map
 
 ```
-stage4_ppg/      ★ Stage 4 PPG build (catalogs, taint, build_ppg, neo4j_loader)
+stage4_ppg/      ★ Stage 4 PPG build (catalogs, taint, build_ppg, semantics, neo4j_loader, cypher_runner)
 step2_prcs/        PRCS extraction (subgraph per source→sink flow)
 step2_dataset/     weak labeler + ADPPG dataset + splits + Codr/annotation export
 step2_convgnn/   ★ PyG data + RGCN model + metrics + training
@@ -166,11 +175,12 @@ step3_caption/     LLM/ICL caption + Code2Seq baseline
 step3_policy/      policy/notice assembly + GDPR/CCPA mapping
 step4_eval/        evaluation harness (classification + caption + compliance)
 step4_userstudy/   user-study instrument + ratings ingestion
+step4_app/         Stage 8 — Privacy Nutrition Facts labels + static viewer app
 pipeline/          run_pipeline (one APK) · run_corpus (many APKs → one dataset)
 adapters/          run_apg_csv (APK→APG, no Neo4j) · fetch_fdroid · fetch_androzoo
 pplib/             shared libs (schema, io, APG adapter)
-configs/           sinks · sdk_catalog · ppg · convgnn · gdpr_ccpa_map · llm · weak_labels (YAML)
-tests/             58 tests — unit + integration + e2e
+configs/           sinks · sdk_catalog · ppg · convgnn · gdpr_ccpa_map · llm · weak_labels (YAML) · queries.cypher · neo4j.grass
+tests/             69 tests — unit + integration + e2e
 data/              apg/ ppg/ prcs/ dataset/ corpus_run/ fixtures/  (gitignored except fixtures)
 
 Static Code Analysis Module/   existing Stage 1–2 (androguard APG → CSV + Neo4j)  — untouched
@@ -182,6 +192,7 @@ Document Analysis Module/      existing Stage 3 (API docs → personal_info_resu
 | Doc | What's in it |
 |---|---|
 | **[docs/dashboard.html](docs/dashboard.html)** | 📊 visual showcase — pipeline, stage/gate status, corpus stats |
+| [DISPLAY.md](DISPLAY.md) | Neo4j display guide — load an app, style it, run the Cypher query library |
 | [docs/PROJECT.md](docs/PROJECT.md) | durable spec — schemas, run order, decisions (single source of truth) |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | notable decisions & insights (for the paper) |
 | [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md) | what runs vs what's bootstrap, completion estimate |

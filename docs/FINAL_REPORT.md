@@ -26,13 +26,21 @@ Full 20-bullet audit is in **FINDINGS.md §0**. Headlines:
 | G | Evaluation harness | `step4_eval/{text_metrics,evaluate}.py` |
 | H | User-study instrument | `step4_userstudy/{protocol,consent_template,build_study,ingest_ratings}` |
 | I | One-command pipeline + APK adapter | `pipeline/run_pipeline.py`, `adapters/run_apg_csv.py` |
-Docs: `PROJECT.md`, `LEDGER.md`, `FINDINGS.md`, `HANDOFF_G1..G4.md`, this report. Tests: `tests/` (43).
+| J | **Neo4j display** (first-class) + per-node `what_it_does` | `stage4_ppg/{semantics,cypher_runner}.py`, `configs/{queries.cypher,neo4j.grass}`, `DISPLAY.md` |
+| K | **Stage 8 Privacy Nutrition Facts** (labels + viewer app) | `step4_app/{nutrition,build_app}.py` |
+Docs: `docs/{PROJECT,LEDGER,FINDINGS}.md`, `docs/handoffs/HANDOFF_G1..G4.md`, `DISPLAY.md`, this report.
+Tests: `tests/` (**69**).
 
 ## 3. What RUNS vs what is STUBBED / bootstrap
 **Runs for real (no caveat):** APG adapter + PPG build (sources/sinks/taint/LINDDUN overlay) +
-PRCS slicing + ADPPG assembly + Codr export + APK-grouped splits + ConvGNN training loop +
-caption generation (offline mock) + policy assembly + GDPR/CCPA mapping + evaluation harness +
-user-study instrument + the single-command pipeline. 43 tests green.
+per-node `what_it_does` + Neo4j Cypher query library/runner + PRCS slicing + ADPPG assembly +
+Codr export + APK-grouped splits + ConvGNN training loop + caption generation (offline mock) +
+policy assembly + GDPR/CCPA mapping + nutrition-facts labels + the Privacy Nutrition Facts app +
+evaluation harness + user-study instrument + the single-command pipeline. 69 tests green.
+
+**First preliminary real metric (G2):** on a 100-flow human-labeled TikTok test split the ConvGNN
+scored practice micro-F1 0.848 / macro-F1 0.584; purpose micro-F1 0.847 / macro-F1 0.258. The test
+labels are **LLM-annotated, not yet human-verified** — preliminary, not publishable ground truth.
 
 **Bootstrap / placeholder (clearly banner-labeled, never ground truth):**
 - **WEAK labels** (`configs/weak_labels.yaml`) — heuristic, await human Codr (G1). `BANNER_WEAK`.
@@ -64,11 +72,12 @@ python -m pytest tests/ -q
 ```
 
 ## 5. Test suite + coverage
-**43 passed**, 0 failed. **81% line coverage** across new packages. Three layers present: unit
-(catalogs, taint, weak labeler, metrics, text metrics), integration (PPG→PRCS→ADPPG→PyG→policy I/O
-contracts), end-to-end (`tests/test_pipeline_e2e.py`: fixture → policy + eval in one call).
-Uncovered: `adapters/run_apg_csv.py` (needs a real APK + androguard) and `stage4_ppg/neo4j_loader.py`
-(needs a running Neo4j) — both external-resource paths, exercised manually.
+**69 passed**, 0 failed. Three layers present: unit (catalogs, taint, weak labeler, metrics, text
+metrics, semantics/what_it_does, Cypher library, nutrition risk), integration (PPG→PRCS→ADPPG→PyG→
+policy I/O contracts; nutrition + app render from the dataset), end-to-end (`tests/test_pipeline_e2e.py`:
+fixture → policy + eval in one call; the full `run_pipeline` now also emits Stage 8).
+Uncovered: `adapters/run_apg_csv.py` (needs a real APK + androguard), `stage4_ppg/neo4j_loader.py` +
+the runner's live `--run` path (need a running Neo4j) — external-resource paths, exercised manually.
 
 ## 6. Human gates (what I need from you)
 - **G1 — Codr annotation** → `data/dataset/human_labels.json` (HANDOFF_G1.md). Target ≥300–500 PRCS / ≥30 apps.
@@ -77,13 +86,13 @@ Uncovered: `adapters/run_apg_csv.py` (needs a real APK + androguard) and `stage4
 - **G4 — APK corpus** → Androzoo key / APKs (HANDOFF_G4.md).
 
 ## 7. Completion estimate toward a publishable paper
-**~55–60% of the engineering; ~30–35% of the paper.** Reasoning: the full method pipeline
-(novel PPG + ConvGNN + caption/policy + eval) is implemented, reproducible, and tested — the
-"systems" contribution is largely done. The **scientific** contribution is gated on humans/data:
-real labels (G1), a real corpus (G4), real classification/caption metrics (G2), and a user study
-(G3). Those are the bulk of remaining paper effort (annotation rounds, training/tuning, study
-execution, write-up). With a labeled corpus in hand, first real numbers are days of compute away;
-the user study is the longest pole.
+**~70–75% of the engineering; ~40% of the paper.** Reasoning: the full method pipeline (novel PPG +
+ConvGNN + caption/policy + eval), the Neo4j display, **Stage 8 nutrition facts + app**, the real APK
+corpus (G4, 10,721 PRCS), and a first preliminary G2 metric are all done, reproducible, and tested —
+the "systems" contribution is essentially complete. The remaining **scientific** work is human-gated:
+verifying the LLM-assisted labels into real ground truth (G1), turning the preliminary G2 numbers into
+audited metrics on a balanced labeled set, real-LLM caption tuning + BLEU/ROUGE vs human references,
+and the developer/user study (G3). The user study is the longest pole.
 
 ## 8. Recommended next actions (in order)
 1. **G4 first** (Androzoo key) → run `run_pipeline --apk` over a corpus to mass-produce PRCS.
