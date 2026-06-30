@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Caption / Policy Generation — Project Dashboard</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a2e; --panel2:#0f1626; --line:#243149;
+    --ink:#e8eefc; --muted:#93a1bd; --faint:#5b6b88;
+    --done:#34d399; --done-bg:#0c3b2e; --done-line:#1d6f55;
+    --gate:#fbbf24; --gate-bg:#3a2a06; --gate-line:#8a6512;
+    --todo:#64748b; --todo-bg:#1a2336; --todo-line:#33405c;
+    --accent:#60a5fa; --accent2:#a78bfa; --pink:#f472b6;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 700px at 80% -10%, #16213d 0%, var(--bg) 55%) fixed;
+    color:var(--ink); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:32px 22px 80px;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+  header.hero{margin-bottom:26px}
+  .eyebrow{color:var(--accent);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px}
+  h1{font-size:30px;margin:6px 0 8px;line-height:1.15;letter-spacing:-.02em}
+  .sub{color:var(--muted);max-width:780px;font-size:15px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:13px;color:var(--muted)}
+  .chip b{color:var(--ink)}
+  .chip.ok b{color:var(--done)}
+
+  h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:38px 0 14px;font-weight:700}
+
+  /* pipeline */
+  .pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .col{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+  .col h3{margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+  .col .colsub{color:var(--faint);font-size:11px;margin-bottom:12px}
+  .node{display:flex;gap:9px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-left-width:3px;border-radius:9px;padding:9px 11px;margin-bottom:8px}
+  .node:last-child{margin-bottom:0}
+  .node .nm{font-weight:600;font-size:13px}
+  .node .ds{color:var(--muted);font-size:11.5px;margin-top:2px}
+  .node .ic{font-size:13px;margin-top:1px}
+  .node.done{border-left-color:var(--done)}
+  .node.gate{border-left-color:var(--gate)}
+  .node.star{box-shadow:0 0 0 1px rgba(167,139,250,.35) inset}
+  .node .star-tag{display:inline-block;font-size:9px;font-weight:800;color:#0b1020;background:var(--accent2);border-radius:4px;padding:1px 4px;margin-left:6px;vertical-align:middle;letter-spacing:.04em}
+  .arrowrow{text-align:center;color:var(--faint);font-size:18px;margin:2px 0 6px}
+
+  .grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
+  @media(max-width:880px){.pipe{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.pipe{grid-template-columns:1fr}}
+
+  /* gates */
+  .gates{display:flex;flex-direction:column;gap:10px}
+  .gate-row{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .gid{font-weight:800;font-size:15px;text-align:center;border-radius:8px;padding:8px 0}
+  .gid.done{background:var(--done-bg);color:var(--done);border:1px solid var(--done-line)}
+  .gid.prog{background:var(--gate-bg);color:var(--gate);border:1px solid var(--gate-line)}
+  .gid.todo{background:var(--todo-bg);color:var(--muted);border:1px solid var(--todo-line)}
+  .gate-row .gt{font-weight:600}
+  .gate-row .gd{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .badge{font-size:11px;font-weight:700;border-radius:999px;padding:5px 11px;white-space:nowrap}
+  .badge.done{background:var(--done-bg);color:var(--done);border:1px solid var(--done-line)}
+  .badge.prog{background:var(--gate-bg);color:var(--gate);border:1px solid var(--gate-line)}
+  .badge.todo{background:var(--todo-bg);color:var(--muted);border:1px solid var(--todo-line)}
+
+  /* corpus chart */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+  .bars{display:flex;flex-direction:column;gap:11px;margin-top:6px}
+  .bar{display:grid;grid-template-columns:96px 1fr 56px;gap:10px;align-items:center;font-size:13px}
+  .bar .lab{color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{height:18px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent2));min-width:2px}
+  .bar.stub .fill{background:#3a4763}
+  .bar .val{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
+  .bar.stub .val{color:var(--faint);font-weight:500}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:680px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+  .stat .big{font-size:30px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .lbl{color:var(--muted);font-size:12px;margin-top:4px}
+
+  .note{display:flex;gap:11px;background:var(--gate-bg);border:1px solid var(--gate-line);border-radius:12px;padding:13px 15px;color:#fde9bf;font-size:13px;margin-top:14px}
+  .note .ic{font-size:16px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:14px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  footer{margin-top:40px;color:var(--faint);font-size:12px;text-align:center;border-top:1px solid var(--line);padding-top:18px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .next{counter-reset:step;list-style:none;padding:0;margin:6px 0 0}
+  .next li{position:relative;padding:8px 0 8px 34px;border-bottom:1px dashed var(--line);color:var(--muted)}
+  .next li:last-child{border-bottom:0}
+  .next li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:7px;width:22px;height:22px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);color:var(--accent);font-weight:700;font-size:12px;text-align:center;line-height:21px}
+  .next li b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Summer 2026 · Research Project</div>
+    <h1>Privacy Caption / Policy Generation &mdash; PPG&nbsp;+&nbsp;ConvGNN</h1>
+    <p class="sub">
+      Given an Android <b>APK</b>, automatically generate an accurate, GDPR/CCPA-compliant,
+      human-readable privacy caption &rarr; full privacy notice. Novelty: replace AST-path&rarr;BiLSTM
+      captioning (code2seq / PriGen) with a <b>Privacy Property Graph</b> encoded by a
+      <b>relation-aware ConvGNN (RGCN)</b> for multi-label Practice&nbsp;+&nbsp;Purpose classification.
+    </p>
+    <div class="meta">
+      <span class="chip">branch <b>stage4-ppg-convgnn</b></span>
+      <span class="chip">Python <b>3.14.0</b></span>
+      <span class="chip ok">tests <b>58 green</b></span>
+      <span class="chip ok">corpus <b>10,721 PRCS</b></span>
+      <span class="chip">apps <b>7 live</b></span>
+    </div>
+  </header>
+
+  <!-- ===================== KEY STATS ===================== -->
+  <section class="stats">
+    <div class="stat"><div class="big">4 + 3</div><div class="lbl">Static stages + learning/gen/eval steps — all built</div></div>
+    <div class="stat"><div class="big">10,721</div><div class="lbl">Real source&rarr;sink PRCS extracted from live apps</div></div>
+    <div class="stat"><div class="big">58</div><div class="lbl">Tests green (unit · integration · e2e)</div></div>
+    <div class="stat"><div class="big">G4&nbsp;✓</div><div class="lbl">Real APK corpus done · G1 annotation in progress</div></div>
+  </section>
+
+  <!-- ===================== PIPELINE ===================== -->
+  <h2>How it works &mdash; the pipeline</h2>
+  <div class="pipe">
+
+    <div class="col">
+      <h3>Step 1 · Static Analysis</h3>
+      <div class="colsub">APK &rarr; privacy-semantic graph</div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Stage 1 — Disassembly</div><div class="ds">androguard unpacks the APK</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Stage 2 — APG</div><div class="ds">AST · MCG · ICFG · DDG graphs</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Stage 3 — API&rarr;PI map</div><div class="ds">docs scrape + NLP</div></div></div>
+      <div class="node done star"><span class="ic">✓</span><div><div class="nm">Stage 4 — PPG<span class="star-tag">NEW</span></div><div class="ds">sources · sinks · taint · LINDDUN</div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>Step 2 · Learning</h3>
+      <div class="colsub">graph &rarr; privacy labels</div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">PRCS slicing</div><div class="ds">subgraph per source&rarr;sink flow</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">ADPPG dataset</div><div class="ds">Practice + Purpose · leakage-free splits</div></div></div>
+      <div class="node done star"><span class="ic">✓</span><div><div class="nm">ConvGNN / RGCN<span class="star-tag">NEW</span></div><div class="ds">2 multi-label heads</div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>Step 3 · Generation</h3>
+      <div class="colsub">labels &rarr; readable policy</div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Caption</div><div class="ds">LLM/ICL + Code2Seq baseline</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Policy / Notice</div><div class="ds">GDPR + CCPA obligation mapping</div></div></div>
+    </div>
+
+    <div class="col">
+      <h3>Step 4 · Evaluation</h3>
+      <div class="colsub">measure & validate</div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Metrics harness</div><div class="ds">classification · caption · compliance</div></div></div>
+      <div class="node gate"><span class="ic">◷</span><div><div class="nm">Developer study</div><div class="ds">blind A/B vs baseline (gated)</div></div></div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--done)"></i> built &amp; tested</span>
+    <span><i class="dot" style="background:var(--gate)"></i> needs humans / data (gated)</span>
+    <span><i class="dot" style="background:var(--accent2)"></i> <b>NEW</b> = novel contribution of this build</span>
+    <span>PAcT &mdash; Practice: Processing · Collecting · Sharing · Other &nbsp;|&nbsp; Purpose: Functionality · Advertisement · Analytics · Other</span>
+  </div>
+
+  <!-- ===================== TWO-COLUMN: GATES + CORPUS ===================== -->
+  <div class="grid2" style="margin-top:30px">
+
+    <div>
+      <h2 style="margin-top:0">Human gates &mdash; what's left</h2>
+      <div class="gates">
+        <div class="gate-row">
+          <div class="gid done">G4</div>
+          <div><div class="gt">Real APK corpus</div><div class="gd">8 AndroZoo APKs processed in-memory &rarr; 10,721 PRCS from 7 live apps</div></div>
+          <div class="badge done">DONE</div>
+        </div>
+        <div class="gate-row">
+          <div class="gid prog">G1</div>
+          <div><div class="gt">Human annotation</div><div class="gd">Real Practice/Purpose ground truth. Tooling + pre-filled sheets staged; human labeling pending</div></div>
+          <div class="badge prog">IN PROGRESS</div>
+        </div>
+        <div class="gate-row">
+          <div class="gid todo">G2</div>
+          <div><div class="gt">Real metrics</div><div class="gd">Non-bootstrap classification numbers — automatic once a human-labeled test split lands</div></div>
+          <div class="badge todo">AFTER G1</div>
+        </div>
+        <div class="gate-row">
+          <div class="gid todo">G3</div>
+          <div><div class="gt">Developer user study</div><div class="gd">Does PPG beat the Code2Seq baseline? Needs IRB approval + ≥12 developers</div></div>
+          <div class="badge todo">TODO</div>
+        </div>
+      </div>
+
+      <div class="note">
+        <span class="ic">⚠️</span>
+        <div><b>No-fabrication rule.</b> Every number from WEAK heuristic labels or the synthetic fixture
+        carries a <b>BOOTSTRAP — not a real result</b> banner. The banner keys off the <b>test split only</b>,
+        so labeling one held-out app clears it without re-labeling all 10,721 PRCS.</div>
+      </div>
+    </div>
+
+    <div>
+      <h2 style="margin-top:0">Real corpus &mdash; PRCS per app</h2>
+      <div class="card">
+        <div class="bars">
+          <!-- widths are % of Twitter (4728) max -->
+          <div class="bar"><span class="lab">Twitter</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="val">4,728</span></div>
+          <div class="bar"><span class="lab">Spotify</span><div class="track"><div class="fill" style="width:57.4%"></div></div><span class="val">2,712</span></div>
+          <div class="bar"><span class="lab">Snapchat</span><div class="track"><div class="fill" style="width:21.2%"></div></div><span class="val">1,004</span></div>
+          <div class="bar"><span class="lab">Duolingo</span><div class="track"><div class="fill" style="width:14.8%"></div></div><span class="val">698</span></div>
+          <div class="bar"><span class="lab">Instagram</span><div class="track"><div class="fill" style="width:13.2%"></div></div><span class="val">626</span></div>
+          <div class="bar"><span class="lab">WhatsApp</span><div class="track"><div class="fill" style="width:11.3%"></div></div><span class="val">535</span></div>
+          <div class="bar"><span class="lab">TikTok</span><div class="track"><div class="fill" style="width:8.8%"></div></div><span class="val">418</span></div>
+          <div class="bar stub"><span class="lab">Facebook*</span><div class="track"><div class="fill" style="width:0%"></div></div><span class="val">0</span></div>
+        </div>
+        <div style="color:var(--faint);font-size:11.5px;margin-top:14px;border-top:1px solid var(--line);padding-top:11px">
+          * The AndroZoo <code>com.facebook.katana</code> APK is a thin stub/loader (279 classes) &rarr; 0 flows.
+          Legit, not a bug &mdash; effective corpus = 7 apps. &nbsp;Total <b style="color:var(--ink)">10,721 PRCS</b>.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== WHAT'S NEXT ===================== -->
+  <h2>What's next</h2>
+  <div class="card">
+    <ol class="next">
+      <li><b>Label the starter sheet</b> (42 rows) &rarr; watch the BOOTSTRAP banner clear. <code>python run_g1g2.py</code></li>
+      <li><b>Label a held-out test app</b> (100 TikTok flows) &rarr; first <b>real classification metric on real apps</b> (G2).</li>
+      <li><b>Real-LLM caption tuning</b> &mdash; plug an API key, tune prompts, compute BLEU/ROUGE vs human references.</li>
+      <li><b>Run the developer study</b> (G3) &mdash; blind A/B PPG vs Code2Seq &rarr; ingest ratings &rarr; RQ1–RQ3.</li>
+      <li><b>Ablations &amp; write-up</b> &mdash; PPG vs APG-only, RGCN vs GGNN/R-GAT; the paper.</li>
+    </ol>
+  </div>
+
+  <footer>
+    Single source of truth: <a href="PROJECT.md">PROJECT.md</a> ·
+    decisions: <a href="FINDINGS.md">FINDINGS.md</a> ·
+    log: <a href="LEDGER.md">LEDGER.md</a> ·
+    report: <a href="FINAL_REPORT.md">FINAL_REPORT.md</a> ·
+    gates: <a href="handoffs/">handoffs/</a><br>
+    Static analysis &amp; doc-analysis modules (Stages&nbsp;1–3) are pre-existing and untouched. ★ Stage 4 PPG + ConvGNN are this build's contribution.
+  </footer>
+
+</div>
+</body>
+</html>

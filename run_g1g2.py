@@ -8,7 +8,15 @@ Run (after you've filled + saved the sheet):
 """
 from __future__ import annotations
 import argparse
+import sys
 from pathlib import Path
+
+# Windows consoles default to cp1252, which can't encode the ✅ banner glyph. Make
+# stdout UTF-8 so the result line never crashes the run (no-op where already UTF-8).
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 from step2_dataset.ingest_annotations import ingest_sheet
 from step2_dataset.build_dataset import build_dataset
