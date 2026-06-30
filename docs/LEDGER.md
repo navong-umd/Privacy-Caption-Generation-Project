@@ -160,3 +160,29 @@
 - **Tests:** `tests/test_neo4j_display.py` — 8 passed (describe roles, determinism, cache roundtrip,
   enrich-all-nodes, CSV column, library parse, params/render, destructive flag). **Suite: 66 passed.**
 - **Status:** done.
+
+## Phase K — Stage 8: Privacy Nutrition Facts (labels + app)
+- `step4_app/nutrition.py`: distils per-app Privacy Nutrition Facts from adppg.jsonl + captions —
+  privacy facts (data collected; data shared off-device + recipients; purposes; third parties) and
+  SECURITY-RISK facts (network-egress flows, identifier access, sensitive categories, LINDDUN threats)
+  + a TRANSPARENT rule-based risk indicator (0-100, formula documented in `_risk()`; NOT an audit;
+  BOOTSTRAP banner when any input label is weak). Emits `<pkg>/nutrition.json` + `.md` + index.
+- `step4_app/build_app.py`: the Privacy Nutrition Facts APP — a STDLIB-ONLY static HTML generator
+  (lightest stack for an offline-first repo; documented). `index.html` (risk-ranked app picker) +
+  `<pkg>.html` per app: nutrition label + practice/purpose bars + captions + a Neo4j panel with the
+  app's exact `app_id` and the rendered `app_ppg_overlay` Cypher. One command, no deps/network.
+- Wired Stage 8 into `pipeline/run_pipeline.py` (step 9). Ran on real corpus (7 apps): all High risk
+  (Duolingo 100/100) — banner-marked since risk uses weak purpose labels.
+- **Tests:** `tests/test_step4_app.py` — 3 passed (risk monotonic+explained, nutrition outputs,
+  static site renders app_id+cypher). **Full suite: 69 passed.**
+- **Status:** done.
+
+## Milestone — first REAL (preliminary) G2 metric on real apps
+- Labeled the 100-flow TikTok held-out test split (LLM-assisted annotation, 95.1% inter-pass agreement)
+  and retrained: **train=7591 weak / val=2712 weak / test=100 human** (banner CLEARED on the test split).
+- **ConvGNN test:** practice micro-F1 **0.848** / macro-F1 **0.584** / subset-acc 0.620;
+  purpose micro-F1 **0.847** / macro-F1 0.258 / subset-acc 0.830. (Purpose macro low: test is 84
+  Functionality / 16 Analytics / ~0 Advertisement — macro punishes empty/rare classes.)
+- **CAVEAT (no-fabrication):** the test labels are LLM-annotated, NOT yet human-verified. This is a
+  preliminary real-pipeline metric, not publishable ground truth until the shortlist + a sample are
+  human-checked (then report human-LLM kappa). Train remains weak (weak supervision). See FINDINGS §G2.

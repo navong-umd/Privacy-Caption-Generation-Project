@@ -105,3 +105,34 @@
   F-Droid from **632,178 → 235,304 paths (-63%)** with no loss of distinct method-level flows.
   Adding `max_paths_per_source: 25` bounds it to <= 206x25 ~ 5,150, and `follow_icfg:false` trims
   further toward DDG-only data flows — composed, these yield a PRCS count suitable for annotation.
+
+## §Display — what_it_does + Neo4j
+- **Every node needs meaning, not just code.** A graph of raw smali is unreadable. Generating a
+  deterministic `what_it_does` per node (role-aware template) makes the PPG legible offline and at
+  scale; the LLM hook is reserved for salient (source/sink/tainted) nodes so cost stays bounded on
+  million-node real PPGs. LLM-derived text is tagged `what_it_does_src=llm:<provider>` — never
+  silently mixed with rule-based text.
+- **Cypher as the slicing interface.** Taint slicing maps cleanly onto variable-length path patterns
+  (`(:Statement{id:$src})-[:TAINT_FLOW*1..25]->(:Statement{id:$sink})`), matching the property-graph
+  paper's subgraph-query style. Per-app isolation via `app_id` lets many apps share one instance.
+
+## §Stage8 — Privacy Nutrition Facts
+- **Risk must be transparent, not a black box.** The risk indicator is a documented additive rule over
+  *statically detected* facts (egress, identifier access, sensitive categories) plus purpose labels;
+  it prints its factors and carries the BOOTSTRAP banner whenever a purpose label is weak. It is framed
+  as a heuristic indicator, explicitly "not a security audit" — avoids fabricating a security score.
+- **Lightest stack = stdlib static HTML.** For an offline-first, test-without-keys repo, a static
+  generator beats Flask/JS: one command, zero deps, opens in any browser, data stays as plain JSON.
+
+## §G2 — first preliminary real metric on real apps
+- After LLM-assisted labeling of the 100-flow TikTok held-out test split, retraining gave the first
+  banner-cleared metric: **practice micro-F1 0.848 / macro-F1 0.584 / subset-acc 0.620; purpose
+  micro-F1 0.847 / macro-F1 0.258 / subset-acc 0.830** (train 7591 weak / val 2712 weak / test 100).
+- **Purpose macro-F1 is low by construction:** the test split is ~84% Functionality, ~16% Analytics,
+  ~0% Advertisement, so macro-F1 (which averages per-class incl. empty classes) is pulled down while
+  micro-F1 and subset-accuracy are healthy. A balanced labeled set is needed before macro-F1 is
+  meaningful — a concrete argument for the G1 annotation push to cover rare purposes.
+- **Integrity caveat (decisive for the paper):** the "human" test labels here are **LLM-annotated,
+  not human-verified**. Two independent LLM passes agreed 95.1% (135/142); 13 rows are in the
+  human-review shortlist. These numbers are a *preliminary pipeline result*, not ground truth, until a
+  human checks the shortlist + a random sample so human-LLM Cohen's kappa can be reported and disclosed.

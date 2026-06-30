@@ -3,7 +3,8 @@ Purpose: ONE command to run the whole pipeline end-to-end on a fixture or a real
 Input:   --apg DIR (APG CSVs) or --apk FILE (runs the adapter first); --out RUN_DIR.
 Output:  RUN_DIR/{apg,ppg,prcs,dataset,convgnn,captions,policy,eval,userstudy} populated.
 
-Chains: [APK->APG] -> PPG -> PRCS -> ADPPG -> ConvGNN(train) -> captions -> policy -> eval -> study.
+Chains: [APK->APG] -> PPG -> PRCS -> ADPPG -> ConvGNN(train) -> captions -> policy -> eval ->
+study -> Privacy Nutrition Facts app (Stage 8).
 ConvGNN training is skipped automatically if torch/PyG are not installed (pipeline still completes).
 
 Run (fixture):  python -m pipeline.run_pipeline --apg data/fixtures/synthetic_apg_large --out data/run
@@ -25,6 +26,7 @@ from step3_caption.generate import generate_captions
 from step3_policy.assemble import assemble
 from step4_eval.evaluate import run as run_eval
 from step4_userstudy.build_study import build_study
+from step4_app.build_app import build_app
 
 log = get_logger("pipeline")
 
@@ -94,6 +96,10 @@ def run_pipeline(out_dir: str, apg_dir: Optional[str] = None, apk: Optional[str]
     # 8. user-study packet
     us = build_study(str(out / "dataset"), str(out / "captions"), str(out / "userstudy"))
     summary["userstudy_tasks"] = us["n_tasks"]
+    # 9. Privacy Nutrition Facts app (Stage 8)
+    app_idx = build_app(str(out / "dataset"), str(out / "captions"), str(out / "app"))
+    summary["nutrition_app"] = {"apps": len(app_idx["apps"]),
+                                "index": str(out / "app" / "index.html")}
     return summary
 
 

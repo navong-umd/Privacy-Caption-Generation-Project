@@ -135,6 +135,7 @@ step3_caption/         LLM/ICL caption + Code2Seq baseline
 step3_policy/          policy/notice assembly
 step4_eval/            evaluation harness
 step4_userstudy/       user-study instrument + ingestion
+step4_app/             Stage 8 — nutrition-facts labels + Privacy Nutrition Facts viewer app
 pipeline/              run_pipeline (one APK) + run_corpus (many APKs -> one dataset)
 tools/                 apply_annotations (G1 sheet filler)
 data/                  apg/ ppg/ prcs/ dataset/ corpus_run/ fixtures/  (gitignored except fixtures)
@@ -186,8 +187,13 @@ python -m pipeline.run_corpus --apks data/corpus --out data/corpus_run --precisi
 - ✅ Step 3 Policy/notice assembly + GDPR/CCPA mapping
 - ✅ Step 4 Evaluation harness (banner-gated; real numbers gated G1/G4)
 - ✅ Step 4 User-study instrument (running it is gated G3)
+- ✅ Neo4j display (what_it_does on every node, Cypher query library + runner, GraSS, DISPLAY.md)
+- ✅ Stage 8 Privacy Nutrition Facts (labels + static viewer app; wired into the pipeline)
 - ✅ One-command pipeline + real-APK adapter
-- ⬜ Human gates: G1 annotation · G2 real metrics · G3 user study · G4 APK corpus
+- 🔄 G1 annotation: LLM-assisted labels staged (95.1% inter-pass agreement); human spot-check pending
+- 🔄 G2 metrics: first PRELIMINARY real-test result (practice macro-F1 0.584 / purpose 0.258 on a
+  100-flow human-labeled TikTok test); test labels are LLM-derived, await human verification
+- ⬜ Human gates: G3 user study · G4 corpus done (10,721 PRCS) — G1/G2 in progress
 
 ## 10. What's Next (ordered)
 1. **G1** — real human annotation in Codr → real ADPPG ground truth.
