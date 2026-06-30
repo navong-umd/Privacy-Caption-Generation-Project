@@ -25,8 +25,9 @@ PPG_STATEMENT_PROPS = [
     "privacy_threat", "tainted", "sdk", "sdk_purpose",
 ]
 
-# PPG CSV columns mirror the APG style plus the overlay props.
-PPG_NODE_COLUMNS = APG_NODE_COLUMNS + PPG_STATEMENT_PROPS
+# PPG CSV columns mirror the APG style plus the overlay props + the semantic description.
+# `what_it_does` is a human-readable, per-node explanation (Neo4j display + PRCS evidence).
+PPG_NODE_COLUMNS = APG_NODE_COLUMNS + PPG_STATEMENT_PROPS + ["what_it_does"]
 PPG_EDGE_COLUMNS = ["start_id", "end_id", "type", "app_id", "pi_type", "privacy_threat"]
 
 # --- PAcT taxonomy (both heads multi-label) ---

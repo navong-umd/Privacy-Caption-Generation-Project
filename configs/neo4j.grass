@@ -1,0 +1,53 @@
+/* Neo4j Browser styling (GraSS) for the Privacy Property Graph.
+   Load: in Neo4j Browser run `:style`, then drag this file in (or paste the contents).
+   Colours nodes by privacy role and captions every node with what_it_does.
+   See DISPLAY.md for the full walkthrough. */
+
+node {
+  diameter: 50px;
+  color: #A5ABB6;
+  border-color: #9AA1AC;
+  border-width: 2px;
+  text-color-internal: #FFFFFF;
+  font-size: 10px;
+  caption: '{what_it_does}';
+}
+
+node.Source {
+  color: #57C7E3;           /* cyan  — reads personal data */
+  border-color: #23B3D7;
+  caption: '{what_it_does}';
+}
+
+node.Sink {
+  color: #F16667;           /* red   — data leaves / is written */
+  border-color: #EB2728;
+  caption: '{what_it_does}';
+}
+
+node.DataItem {
+  color: #F79767;           /* orange — a personal-data item */
+  border-color: #F36924;
+  caption: '{category}';
+}
+
+node.Store     { color: #FFC454; border-color: #D7A013; caption: '{store_label}'; }
+node.Component { color: #DA7194; border-color: #CC3C6C; caption: '{component_label}'; }
+node.Statement { color: #8DCC93; border-color: #5DB665; caption: '{what_it_does}'; }
+node.Method    { color: #C990C0; border-color: #B261A5; caption: '{what_it_does}'; }
+node.Class     { color: #4C8EDA; border-color: #2870ED; caption: '{what_it_does}'; }
+
+relationship {
+  color: #A5ABB6;
+  shaft-width: 1px;
+  font-size: 8px;
+  text-color-external: #000000;
+  caption: '{type}';
+}
+
+relationship.TAINT_FLOW      { color: #F16667; shaft-width: 3px; caption: 'taint'; }
+relationship.PRIVACY_RELATION{ color: #F79767; shaft-width: 2px; caption: '{relation}'; }
+relationship.DATA_DEPENDS    { color: #57C7E3; }
+relationship.CALLS           { color: #8DCC93; }
+relationship.ICFG_NEXT       { color: #C9D2D9; }
+relationship.HAS_STATEMENT   { color: #E8EDF0; }

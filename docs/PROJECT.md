@@ -126,20 +126,30 @@ permission/sink-type) + token-embedding hook. Graph-level `y_practice` (4) and `
 ## 7. Repo Map (new code)
 ```
 pplib/                 shared libs (schema, io, APG adapter)
-configs/               sinks.yaml, sdk_catalog.yaml, ppg.yaml, convgnn.yaml, gdpr_ccpa_map.yaml, llm.yaml, weak_labels.yaml
-stage4_ppg/            PPG build (catalogs, taint, build_ppg, neo4j_loader)
+configs/               sinks/sdk_catalog/ppg/convgnn/gdpr_ccpa_map/llm/weak_labels.yaml, queries.cypher, neo4j.grass
+stage4_ppg/            PPG build (catalogs, taint, build_ppg, semantics[what_it_does], neo4j_loader, cypher_runner)
 step2_prcs/            PRCS extraction
-step2_dataset/         weak labeler + ADPPG dataset + splits + Codr export
+step2_dataset/         weak labeler + ADPPG dataset + splits + Codr/annotation export
 step2_convgnn/         PyG data + RGCN model + training
 step3_caption/         LLM/ICL caption + Code2Seq baseline
 step3_policy/          policy/notice assembly
 step4_eval/            evaluation harness
 step4_userstudy/       user-study instrument + ingestion
 pipeline/              run_pipeline (one APK) + run_corpus (many APKs -> one dataset)
-data/                  apg/ ppg/ prcs/ dataset/ corpus/ fixtures/  (gitignored except fixtures)
+tools/                 apply_annotations (G1 sheet filler)
+data/                  apg/ ppg/ prcs/ dataset/ corpus_run/ fixtures/  (gitignored except fixtures)
 tests/                 unit + integration + e2e
 adapters/              run_apg_csv (APK->APG, no Neo4j), fetch_fdroid (no key), fetch_androzoo (key)
+docs/                  PROJECT/LEDGER/FINDINGS/FINAL_REPORT, dashboard.html, handoffs/, archive/
+DISPLAY.md             Neo4j display guide (load -> style -> query -> read a flow)
 ```
+
+### Neo4j display (first-class deliverable)
+Every PPG node carries `code` + `what_it_does` (a human-readable description; offline-deterministic via
+`stage4_ppg/semantics.py`, optional LLM hook for salient nodes, cached). Per-app isolation via `app_id`.
+The query library `configs/queries.cypher` (run via `stage4_ppg/cypher_runner.py`, offline `--show` or
+live `--run`) renders an app's APG/PPG, lists sources/sinks, and slices a PRCS subgraph / taint path.
+Browser styling in `configs/neo4j.grass`; full walkthrough in `DISPLAY.md`.
 
 ## 8. Environment & Run Order
 - Python **3.14.0** (matches existing). Install: `pip install -r requirements-stage4.txt`.

@@ -129,3 +129,34 @@
   leakage-free APK-grouped splits). `run_pipeline --precision` for large-APK taint tightening.
 - **Tests: 51 passed** (added adapter + corpus tests, all offline).
 - In progress: downloading AndroZoo index (3.49 GB) for package-based selection.
+
+## Follow-up — Docs cleanup + LLM-assisted G1 annotation (2026-06-30)
+- Root had 10 MD files -> consolidated to a single presentation README.md (Mermaid pipeline diagram +
+  stage/gate status + real-corpus results + repo map); moved the rest under `docs/` (PROJECT/LEDGER/
+  FINDINGS/FINAL_REPORT, `handoffs/`, `archive/`) via `git mv`. New `docs/dashboard.html` (offline visual).
+- LLM-assisted G1: a Workflow ran TWO independent LLM annotation passes over all 142 staged rows
+  (starter 42 + eval_run 100), merged deterministically. **95.1% inter-pass agreement (135/142)**;
+  13 flagged to `data/_review_shortlist.md`. `tools/apply_annotations.py` filled both sheets +
+  human_labels.json. INTEGRITY: LLM labels are NOT human ground truth — user to spot-check the
+  shortlist + a sample so human–LLM κ can be reported. Fixed `run_g1g2.py` cp1252 crash (force UTF-8).
+  Starter loop verified end-to-end: **banner CLEARED** (weak=0 human=42). Eval/G2 metric run started.
+
+## Phase J — Neo4j display (first-class deliverable) + what_it_does semantics
+- `stage4_ppg/semantics.py`: per-node `what_it_does` describer — OFFLINE deterministic template
+  over privacy facts (Source->"Reads the user's <pi> via <api>", Sink->"Sends/Writes data to <dest>",
+  tainted Statement->"Carries tainted <pi>...", Method/Class/DataItem/Store/Component), with an
+  optional LLM hook (PCapGen-Extractor style) for salient nodes + a JSON disk cache. LLM-derived
+  text tagged `what_it_does_src="llm:<provider>"`; deterministic path tagged `rule`/`cache`.
+- Wired into `build_ppg`: `enrich_graph` sets `what_it_does` (+ `_src`) on EVERY node before export;
+  added `what_it_does` to `PPG_NODE_COLUMNS` (schema.py) + the CSV export so it ships in
+  PPG_nodes.csv, GraphML, pickle, and Neo4j. Offline by default; cheap even on real million-node PPGs.
+- `configs/queries.cypher`: 11-query library (app_apg, app_ppg_overlay, list_sources/sinks,
+  flows_for_app, prcs_subgraph, taint_path_snippets, node_detail, app_summary, list_apps, clear_app),
+  per-app isolation via `app_id`, taint slicing via variable-length `TAINT_FLOW*` path patterns.
+- `stage4_ppg/cypher_runner.py`: parses the library into named queries, `--list`/`--show` work fully
+  OFFLINE (param substitution for display), `--run` executes against Neo4j (lazy import, never auto-runs
+  the DESTRUCTIVE clear_app). `configs/neo4j.grass`: Browser styling (colour by privacy role, caption =
+  what_it_does). `DISPLAY.md`: load->style->query->read-a-flow walkthrough.
+- **Tests:** `tests/test_neo4j_display.py` — 8 passed (describe roles, determinism, cache roundtrip,
+  enrich-all-nodes, CSV column, library parse, params/render, destructive flag). **Suite: 66 passed.**
+- **Status:** done.

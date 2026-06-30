@@ -52,13 +52,16 @@ def _linddun(sink_type: str, category: str, cfg: dict) -> List[str]:
 class PPGBuilder:
     """Builds the PPG graph and overlay from an APG plus PI catalogs."""
 
-    def __init__(self, cfg: dict):
+    def __init__(self, cfg: dict, llm_provider=None):
         self.cfg = cfg
         self.sources = SourceCatalog(cfg, REPO_ROOT)
         self.sinks = SinkCatalog(REPO_ROOT / cfg["paths"]["sinks_catalog"])
         self.G = nx.MultiDiGraph()
         self.taint_paths: List[TaintPath] = []
         self.stmt_props: Dict[str, dict] = {}
+        # Offline by default. Pass a real provider (from step3_caption.llm_interface) to
+        # generate `what_it_does` via an LLM for source/sink/tainted nodes.
+        self._llm_provider = llm_provider
 
     # ---- node/edge helpers ----
     def _add_node(self, nid: str, label: str, **props) -> None:
@@ -160,6 +163,13 @@ class PPGBuilder:
             if sid in self.G:
                 self.G.nodes[sid].update(props)
 
+        # 6. semantic overlay: a human-readable `what_it_does` on every node (offline by
+        #    default; a real LLM provider can be wired via configs/llm.yaml for salient nodes).
+        from stage4_ppg.semantics import WhatItDoesCache, enrich_graph
+        cache_path = self.cfg.get("paths", {}).get("what_it_does_cache")
+        cache = WhatItDoesCache(REPO_ROOT / cache_path) if cache_path else None
+        enrich_graph(self.G, provider=self._llm_provider, cache=cache)
+
     # ---- outputs ----
     def export_csv(self, out_dir: Path) -> None:
         """Write PPG_nodes.csv / PPG_edges.csv mirroring the APG CSV style."""
@@ -173,7 +183,7 @@ class PPGBuilder:
             row["callee"] = d.get("callee", "")
             row["app_id"] = d.get("app_id", "")
             for p in ("is_source", "is_sink", "pi_type", "permission", "sink_type",
-                      "privacy_threat", "tainted", "sdk", "sdk_purpose"):
+                      "privacy_threat", "tainted", "sdk", "sdk_purpose", "what_it_does"):
                 if p in d:
                     row[p] = d[p]
             node_rows.append(row)
