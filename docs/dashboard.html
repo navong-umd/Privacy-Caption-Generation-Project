@@ -115,18 +115,19 @@
     <div class="meta">
       <span class="chip">branch <b>stage4-ppg-convgnn</b></span>
       <span class="chip">Python <b>3.14.0</b></span>
-      <span class="chip ok">tests <b>58 green</b></span>
+      <span class="chip ok">tests <b>71 green</b></span>
       <span class="chip ok">corpus <b>10,721 PRCS</b></span>
       <span class="chip">apps <b>7 live</b></span>
+      <span class="chip ok">G2 prelim <b>practice F1 .584</b></span>
     </div>
   </header>
 
   <!-- ===================== KEY STATS ===================== -->
   <section class="stats">
-    <div class="stat"><div class="big">4 + 3</div><div class="lbl">Static stages + learning/gen/eval steps — all built</div></div>
+    <div class="stat"><div class="big">9 / 9</div><div class="lbl">Stages built (incl. Neo4j display + Stage 8 nutrition facts)</div></div>
     <div class="stat"><div class="big">10,721</div><div class="lbl">Real source&rarr;sink PRCS extracted from live apps</div></div>
-    <div class="stat"><div class="big">58</div><div class="lbl">Tests green (unit · integration · e2e)</div></div>
-    <div class="stat"><div class="big">G4&nbsp;✓</div><div class="lbl">Real APK corpus done · G1 annotation in progress</div></div>
+    <div class="stat"><div class="big">71</div><div class="lbl">Tests green (unit · integration · e2e)</div></div>
+    <div class="stat"><div class="big">G2*</div><div class="lbl">First preliminary real metric · *test labels LLM-derived</div></div>
   </section>
 
   <!-- ===================== PIPELINE ===================== -->
@@ -153,14 +154,16 @@
     <div class="col">
       <h3>Step 3 · Generation</h3>
       <div class="colsub">labels &rarr; readable policy</div>
-      <div class="node done"><span class="ic">✓</span><div><div class="nm">Caption</div><div class="ds">LLM/ICL + Code2Seq baseline</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Caption</div><div class="ds">real LLM (key-gated) + Code2Seq baseline</div></div></div>
       <div class="node done"><span class="ic">✓</span><div><div class="nm">Policy / Notice</div><div class="ds">GDPR + CCPA obligation mapping</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Nutrition Facts <span class="star-tag">S8</span></div><div class="ds">privacy + risk labels · viewer app</div></div></div>
     </div>
 
     <div class="col">
       <h3>Step 4 · Evaluation</h3>
-      <div class="colsub">measure & validate</div>
+      <div class="colsub">measure &middot; display &middot; validate</div>
       <div class="node done"><span class="ic">✓</span><div><div class="nm">Metrics harness</div><div class="ds">classification · caption · compliance</div></div></div>
+      <div class="node done"><span class="ic">✓</span><div><div class="nm">Neo4j display <span class="star-tag">NEW</span></div><div class="ds">what_it_does · Cypher query library</div></div></div>
       <div class="node gate"><span class="ic">◷</span><div><div class="nm">Developer study</div><div class="ds">blind A/B vs baseline (gated)</div></div></div>
     </div>
 
@@ -186,13 +189,13 @@
         </div>
         <div class="gate-row">
           <div class="gid prog">G1</div>
-          <div><div class="gt">Human annotation</div><div class="gd">Real Practice/Purpose ground truth. Tooling + pre-filled sheets staged; human labeling pending</div></div>
+          <div><div class="gt">Human annotation</div><div class="gd">LLM-assisted labels staged (95.1% two-pass agreement); 13-row human shortlist to verify</div></div>
           <div class="badge prog">IN PROGRESS</div>
         </div>
         <div class="gate-row">
-          <div class="gid todo">G2</div>
-          <div><div class="gt">Real metrics</div><div class="gd">Non-bootstrap classification numbers — automatic once a human-labeled test split lands</div></div>
-          <div class="badge todo">AFTER G1</div>
+          <div class="gid prog">G2</div>
+          <div><div class="gt">Real metrics (preliminary)</div><div class="gd">Banner cleared on a 100-flow TikTok test: practice macro-F1 <b>0.584</b>, purpose 0.258 — test labels LLM-derived, await human check</div></div>
+          <div class="badge prog">PRELIMINARY</div>
         </div>
         <div class="gate-row">
           <div class="gid todo">G3</div>
@@ -236,9 +239,8 @@
   <h2>What's next</h2>
   <div class="card">
     <ol class="next">
-      <li><b>Label the starter sheet</b> (42 rows) &rarr; watch the BOOTSTRAP banner clear. <code>python run_g1g2.py</code></li>
-      <li><b>Label a held-out test app</b> (100 TikTok flows) &rarr; first <b>real classification metric on real apps</b> (G2).</li>
-      <li><b>Real-LLM caption tuning</b> &mdash; plug an API key, tune prompts, compute BLEU/ROUGE vs human references.</li>
+      <li><b>Human-verify the labels</b> &mdash; check the 13-row shortlist + a random sample &rarr; report human–LLM &kappa; and turn the preliminary G2 numbers into audited metrics.</li>
+      <li><b>Add Anthropic credits</b> &mdash; the real-LLM caption path is wired &amp; verified (auth OK); it just needs account credits, then tune prompts + BLEU/ROUGE vs references.</li>
       <li><b>Run the developer study</b> (G3) &mdash; blind A/B PPG vs Code2Seq &rarr; ingest ratings &rarr; RQ1–RQ3.</li>
       <li><b>Ablations &amp; write-up</b> &mdash; PPG vs APG-only, RGCN vs GGNN/R-GAT; the paper.</li>
     </ol>
