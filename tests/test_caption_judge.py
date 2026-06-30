@@ -1,7 +1,20 @@
 """Tests for the LLM-as-judge caption evaluation (offline mock judge; no network/keys)."""
 from __future__ import annotations
 
-from step4_eval.caption_judge import _heuristic_score, _heuristic_pairwise, judge_captions
+from step4_eval.caption_judge import (_heuristic_score, _heuristic_pairwise, judge_captions,
+                                       _extract_json, _to_score)
+
+
+def test_extract_json_is_robust():
+    assert _extract_json('{"accuracy":4,"readability":5}') == {"accuracy": 4, "readability": 5}
+    # embedded in prose with surrounding braces/text -> balanced scan still recovers it
+    assert _extract_json('Sure! {"accuracy":3,"readability":2} (done)') == {"accuracy": 3, "readability": 2}
+    assert _extract_json("no json here") is None
+
+
+def test_to_score_coerces_and_clamps():
+    assert _to_score("4") == 4 and _to_score(4.5) == 4 and _to_score(9) == 5
+    assert _to_score("high") == 3 and _to_score(None) == 3 and _to_score(0) == 1
 
 
 def test_heuristic_score_rewards_grounding():

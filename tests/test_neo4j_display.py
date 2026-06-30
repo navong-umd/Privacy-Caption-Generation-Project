@@ -32,15 +32,16 @@ def test_describe_is_deterministic_offline():
     assert a == b and sa == "rule" and sb == "rule"
 
 
-def test_what_it_does_cache_roundtrip(tmp_path):
+def test_what_it_does_cache_preserves_provenance(tmp_path):
     cache = WhatItDoesCache(tmp_path / "wid.json")
     d = {"label": "Source", "api": "x->y", "pi_type": "CONTACT_INFORMATION"}
-    text, _ = describe("n1", d, cache=cache)
+    text, src = describe("n1", d, cache=cache)
     cache.save()
-    # a fresh cache over the same file returns the cached value tagged "cache"
+    # a fresh cache over the same file returns the cached text AND the ORIGINAL provenance
+    # (not a generic "cache") so LLM-derived descriptions stay marked llm:<provider>.
     cache2 = WhatItDoesCache(tmp_path / "wid.json")
     text2, src2 = describe("n1", d, cache=cache2)
-    assert text2 == text and src2 == "cache"
+    assert text2 == text and src2 == src == "rule"
 
 
 # ---------- enrichment on a real (synthetic) PPG ----------

@@ -152,7 +152,10 @@ class PPGBuilder:
             for a, b in zip(tp.path, tp.path[1:]):
                 self._add_edge(a, b, "TAINT_FLOW", pi_type=scat, privacy_threat=threat_str)
                 for sid in (a, b):
-                    self.stmt_props.setdefault(sid, {})["tainted"] = True
+                    props = self.stmt_props.setdefault(sid, {})
+                    props["tainted"] = True
+                    if scat:                          # carry the PI category onto relay nodes
+                        props.setdefault("pi_type", scat)
             # connect Source -> Sink overlay nodes with the threat
             self._add_edge(f"src::{tp.source_stmt}", f"sink::{tp.sink_stmt}",
                            "PRIVACY_RELATION", relation="FLOWS_TO", privacy_threat=threat_str)

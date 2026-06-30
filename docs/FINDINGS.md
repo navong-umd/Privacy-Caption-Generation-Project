@@ -136,3 +136,14 @@
   not human-verified**. Two independent LLM passes agreed 95.1% (135/142); 13 rows are in the
   human-review shortlist. These numbers are a *preliminary pipeline result*, not ground truth, until a
   human checks the shortlist + a random sample so human-LLM Cohen's kappa can be reported and disclosed.
+
+## §Captions — real LLM captions beat the Code2Seq baseline (LLM-judged)
+- Generated real captions with **OpenAI gpt-4o** (the supplied key was OpenAI; `--provider openai`
+  routed through the same pluggable interface, zero code change). 350 captions over the 7 real apps.
+- **LLM-as-judge** (`step4_eval/caption_judge.py`, automated stand-in for missing human references):
+  on a 70-caption sample the PPG-informed LLM captions scored **accuracy 4.59/5, readability 4.56/5**
+  vs the Code2Seq baseline's **2.74 / 2.23**, and were preferred **70/70 (100%)** in blind pairwise.
+  Banner: LLM-JUDGED (not human ratings) — a strong directional signal for RQ "is the PPG→LLM caption
+  better than code2seq", to be confirmed by the G3 human study. Example (Twitter db-info→network):
+  LLM "This app accesses your database information... processes and shares this data over the network..."
+  vs baseline "getCount value flows to applyAndAckSettings; app appears to share this data."

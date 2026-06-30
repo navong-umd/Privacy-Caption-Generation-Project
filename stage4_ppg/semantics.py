@@ -83,7 +83,7 @@ def describe_node(node_id: str, d: Dict) -> str:
 
     # Statement (default)
     if d.get("tainted"):
-        base = f"Carries tainted {_pi(d.get('pi_type'))}"
+        base = f"Carries tainted {_pi(d.get('pi_type') or d.get('category'))}"
     else:
         base = "Executes a code statement"
     callee = d.get("callee")
@@ -114,11 +114,13 @@ class WhatItDoesCache:
                           "is_source", "is_sink", "tainted", "privacy_threat"))
         return hashlib.sha1(f"{facts}".encode("utf-8")).hexdigest()[:16]
 
-    def get(self, k: str) -> Optional[str]:
+    def get(self, k: str):
         return self._d.get(k)
 
-    def set(self, k: str, v: str) -> None:
-        self._d[k] = v
+    def set(self, k: str, text: str, src: str) -> None:
+        # Store provenance with the text so a cache hit can report the ORIGINAL src
+        # ('rule' / 'llm:<provider>') rather than collapsing to 'cache'.
+        self._d[k] = {"text": text, "src": src}
 
     def save(self) -> None:
         if self.path:
@@ -140,7 +142,10 @@ def describe(node_id: str, d: Dict, provider=None, cache: Optional[WhatItDoesCac
     """Return (what_it_does, provenance). Deterministic unless a real provider is supplied."""
     k = cache.key(node_id, d) if cache else None
     if cache and k in cache._d:
-        return cache._d[k], "cache"
+        e = cache._d[k]
+        if isinstance(e, dict):                    # current format: {text, src}
+            return e.get("text", ""), e.get("src", "rule")
+        return e, "rule"                           # tolerate older flat-string caches
 
     salient = bool(d.get("is_source") or d.get("is_sink") or d.get("tainted"))
     use_llm = provider is not None and getattr(provider, "name", "mock") != "mock" \
@@ -155,7 +160,7 @@ def describe(node_id: str, d: Dict, provider=None, cache: Optional[WhatItDoesCac
         text, src = describe_node(node_id, d), "rule"
 
     if cache and k:
-        cache.set(k, text)
+        cache.set(k, text, src)
     return text, src
 
 

@@ -84,13 +84,37 @@ def _heuristic_pairwise(llm: str, base: str, f: Dict) -> str:
 
 # ---------- real LLM judge ----------
 def _extract_json(text: str) -> Optional[Dict]:
-    m = re.search(r"\{.*\}", text or "", re.DOTALL)
-    if not m:
+    """Tolerant JSON extraction: whole-string first, then a brace-balanced scan."""
+    if not text:
         return None
+    s = text.strip()
     try:
-        return json.loads(m.group(0))
+        return json.loads(s)
     except Exception:
+        pass
+    start = s.find("{")
+    if start < 0:
         return None
+    depth = 0
+    for i in range(start, len(s)):
+        if s[i] == "{":
+            depth += 1
+        elif s[i] == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(s[start:i + 1])
+                except Exception:
+                    return None
+    return None
+
+
+def _to_score(v, default: int = 3) -> int:
+    """Coerce a model-returned score to an int in [1,5] (models sometimes return '4', 4.5, etc.)."""
+    try:
+        return max(1, min(5, int(round(float(v)))))
+    except (TypeError, ValueError):
+        return default
 
 
 def _llm_score(provider, caption: str, f: Dict) -> Dict:  # pragma: no cover (needs key)
@@ -101,7 +125,7 @@ def _llm_score(provider, caption: str, f: Dict) -> Dict:  # pragma: no cover (ne
         f"facts: personal_data={f['pi']} practice={f['practice']} purpose={f['purpose']} sink={f['sink_type']}\n"
         f"caption: {caption}")
     d = _extract_json(provider.generate(prompt, {})) or {}
-    return {"accuracy": int(d.get("accuracy", 3)), "readability": int(d.get("readability", 3)),
+    return {"accuracy": _to_score(d.get("accuracy")), "readability": _to_score(d.get("readability")),
             "faithful": bool(d.get("faithful", False))}
 
 
@@ -116,11 +140,17 @@ def _llm_pairwise(provider, a: str, b: str, f: Dict) -> str:  # pragma: no cover
 
 
 def judge_captions(dataset_dir: str, captions_dir: str, out_dir: str,
-                   provider_name: str = "mock", llm_config: Optional[str] = None) -> Dict:
-    """Score every caption + run the blind pairwise comparison. Returns the aggregate report."""
+                   provider_name: str = "mock", llm_config: Optional[str] = None,
+                   limit: Optional[int] = None) -> Dict:
+    """Score every caption + run the blind pairwise comparison. Returns the aggregate report.
+
+    `limit` caps how many captions are judged (bounds API cost for a real judge).
+    """
     records = {json.loads(l)["prcs_id"]: json.loads(l) for l in
                (Path(dataset_dir) / "adppg.jsonl").read_text(encoding="utf-8").splitlines()}
     caps = json.loads((Path(captions_dir) / "captions.json").read_text(encoding="utf-8"))
+    if limit:
+        caps = caps[:limit]
 
     use_llm = provider_name and provider_name != "mock"
     provider = None
@@ -188,8 +218,9 @@ def main() -> None:
     ap.add_argument("--out", default="data/caption_eval")
     ap.add_argument("--provider", default="mock", help="mock | openai | anthropic | ...")
     ap.add_argument("--config", default="configs/llm.yaml")
+    ap.add_argument("--limit", type=int, default=None, help="cap captions judged (bounds API cost)")
     args = ap.parse_args()
-    r = judge_captions(args.dataset, args.captions, args.out, args.provider, args.config)
+    r = judge_captions(args.dataset, args.captions, args.out, args.provider, args.config, limit=args.limit)
     print("\n=== Caption evaluation (LLM-judged) ===")
     print(f"  [{r['banner']}]  judge={r['judge']}  n={r['n_captions']}")
     print(f"  PPG-LLM   accuracy={r['llm_mean']['accuracy']}  readability={r['llm_mean']['readability']}")

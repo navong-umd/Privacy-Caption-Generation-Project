@@ -127,6 +127,7 @@ def build_nutrition(dataset_dir: str, captions_dir: str | None, out_dir: str,
         practices = Counter(p for f in facts for p in f["practice"])
         third_parties = sorted({f["sink_label"] for f in facts
                                 if ({"Advertisement", "Analytics"} & set(f["purpose"]))
+                                and f["sink_type"] in ("network", "ipc")   # only off-device recipients
                                 and f.get("sink_label")})
         risk = _risk(facts)
         risk["sensitive_categories"] = sorted({_human(c, pi_names) for c in collected
