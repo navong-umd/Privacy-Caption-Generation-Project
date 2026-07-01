@@ -28,19 +28,31 @@ Full 20-bullet audit is in **FINDINGS.md §0**. Headlines:
 | I | One-command pipeline + APK adapter | `pipeline/run_pipeline.py`, `adapters/run_apg_csv.py` |
 | J | **Neo4j display** (first-class) + per-node `what_it_does` | `stage4_ppg/{semantics,cypher_runner}.py`, `configs/{queries.cypher,neo4j.grass}`, `DISPLAY.md` |
 | K | **Stage 8 Privacy Nutrition Facts** (labels + viewer app) | `step4_app/{nutrition,build_app}.py` |
-Docs: `docs/{PROJECT,LEDGER,FINDINGS}.md`, `docs/handoffs/HANDOFF_G1..G4.md`, `DISPLAY.md`, this report.
-Tests: `tests/` (**69**).
+| L | Real-LLM captions (provider override + cost caps) | `step3_caption/generate.py` (verified on OpenAI gpt-4o) |
+| M | **LLM-as-judge caption eval** (no human refs) | `step4_eval/caption_judge.py` |
+| N | **PPG-vs-APG ablation** | `step2_convgnn/ablation.py` |
+| O | Adversarial self-review + 5 bug fixes | (find→verify workflow) |
+| P | Statement-token encoder hook | `step2_convgnn/data.py` (`token_features`) |
+Docs: `docs/{PROJECT,LEDGER,FINDINGS,RESULTS}.md`, `docs/handoffs/`, `DISPLAY.md`, this report.
+Tests: `tests/` (**79**). Preliminary results: **[docs/RESULTS.md](RESULTS.md)**.
 
 ## 3. What RUNS vs what is STUBBED / bootstrap
 **Runs for real (no caveat):** APG adapter + PPG build (sources/sinks/taint/LINDDUN overlay) +
 per-node `what_it_does` + Neo4j Cypher query library/runner + PRCS slicing + ADPPG assembly +
 Codr export + APK-grouped splits + ConvGNN training loop + caption generation (offline mock) +
 policy assembly + GDPR/CCPA mapping + nutrition-facts labels + the Privacy Nutrition Facts app +
-evaluation harness + user-study instrument + the single-command pipeline. 69 tests green.
+evaluation harness + user-study instrument + real-LLM captions (OpenAI gpt-4o) + LLM-as-judge caption
+eval + PPG-vs-APG ablation + statement-token hook + the single-command pipeline. 79 tests green.
 
-**First preliminary real metric (G2):** on a 100-flow human-labeled TikTok test split the ConvGNN
-scored practice micro-F1 0.848 / macro-F1 0.584; purpose micro-F1 0.847 / macro-F1 0.258. The test
-labels are **LLM-annotated, not yet human-verified** — preliminary, not publishable ground truth.
+**Preliminary real results (full detail in [docs/RESULTS.md](RESULTS.md)):**
+- **Classification (G2):** on a 100-flow human-labeled TikTok test — practice micro-F1 0.848 / macro-F1
+  0.584; purpose micro-F1 0.847 / macro-F1 0.258.
+- **Ablation:** the PPG privacy overlay beats APG-only on all four metrics (overall macro-F1 0.421 vs
+  0.396, Δ +0.025) — supports the novelty.
+- **Captions (LLM-judged):** PPG-informed LLM 4.59/4.56 (accuracy/readability) vs Code2Seq 2.74/2.23,
+  preferred 70/70 (100%).
+- **Caveat:** test labels are **LLM-annotated** and caption quality is **LLM-judged** — preliminary, not
+  human ground truth. Paper-grade after human label verification + the G3 study.
 
 **Bootstrap / placeholder (clearly banner-labeled, never ground truth):**
 - **WEAK labels** (`configs/weak_labels.yaml`) — heuristic, await human Codr (G1). `BANNER_WEAK`.
