@@ -158,6 +158,15 @@
   a balanced human-labeled set + the reserved statement-token encoder should widen it. Directional
   until human-verified labels (same caveat as G2), but it is computed on the non-weak test split.
 
+## §Token-encoder — a naive statement-token hook hurts at bootstrap scale (negative result)
+- Filled the reserved `TOKEN_HOOK_DIM` slot with a hashing-trick bag-of-tokens over each node's
+  code+callee (camelCase/identifier split, L1-normalized). On the 100-flow human-labeled test it
+  **lowered** practice macro-F1 (0.584 → 0.415) and purpose (0.259 → 0.228). Reason: an 8-dim hashed
+  token vector is collision-heavy and, on ~100 test graphs with weak-supervised training, injects noise
+  rather than lexical signal. Kept **`token_features=False` by default** (all recorded results are the
+  no-token setting). The hook is implemented + tested so a *learned* code-token embedding can drop into
+  the same slot later — but the cheap hashing version is a documented dead end at this scale.
+
 ## §Review — adversarial self-review caught 5 real bugs
 - A find→verify workflow (16 agents) over the 6 new modules surfaced 10 findings; the verify pass
   confirmed 5 and rejected 5. All 5 were genuine: cache dropped LLM provenance (reported "cache" not

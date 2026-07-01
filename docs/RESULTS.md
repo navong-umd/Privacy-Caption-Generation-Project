@@ -43,8 +43,13 @@ Same ConvGNN, same splits/seed, node features **with** vs **without** the privac
 | **overall macro-F1** | **0.421** | 0.396 | **+0.025** |
 
 **The privacy overlay helps on all four metrics** — direct support for the novelty (PPG > APG-only).
-Margin is modest but consistent; expected to grow with balanced human labels + the statement-token
-encoder (the reserved feature hook).
+Margin is modest but consistent; the lever to grow it is a balanced human-labeled set.
+
+**Statement-token encoder (negative result, honest).** Filling the reserved token hook with a naive
+hashing-trick bag-of-tokens over code+callee **hurt** at this scale: practice macro-F1 0.584 → **0.415**,
+purpose 0.259 → 0.228. On ~100 test graphs an 8-dim hashed (collision-prone) token vector adds noise,
+not signal — so `token_features` is **off by default**. A real learned statement-token embedding
+(e.g. a small code encoder into the reserved slot) is future work; the naive version is not it.
 
 ## 4. Caption quality — PPG-informed LLM vs Code2Seq baseline (LLM-judged)
 Real captions generated with OpenAI gpt-4o (350 over the 7 apps). An LLM judge scored a 70-caption
