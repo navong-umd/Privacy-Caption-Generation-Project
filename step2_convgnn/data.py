@@ -14,7 +14,9 @@ edges gives the same relation-awareness with far less plumbing (justified in FIN
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -48,38 +50,63 @@ def _truthy(v) -> bool:
     return str(v).lower() in ("1", "true", "yes")
 
 
-def _node_features(n: dict, privacy_features: bool = True) -> Tuple[int, List[float]]:
+_TOKEN_BASE = FEAT_DIM - TOKEN_HOOK_DIM     # start index of the token-hook block
+
+
+def _stable_hash(tok: str) -> int:
+    """Deterministic hash (PYTHONHASHSEED-independent) for the hashing-trick token encoder."""
+    return int(hashlib.md5(tok.encode("utf-8")).hexdigest(), 16)
+
+
+def _tokens(n: dict) -> List[str]:
+    """Lexical tokens from a node's code + callee (camelCase + non-alnum split)."""
+    text = f"{n.get('code', '')} {n.get('callee', '')}"
+    parts = re.findall(r"[A-Z]+(?![a-z])|[A-Z][a-z]+|[a-z]+|\d+", text)
+    return [p.lower() for p in parts if len(p) > 1]
+
+
+def _node_features(n: dict, privacy_features: bool = True,
+                   token_features: bool = False) -> Tuple[int, List[float]]:
     """Return (type_id, feature_vector) for one subgraph node.
 
-    privacy_features=False is the APG-ONLY ablation: the node keeps its type embedding and
-    the graph keeps its structure/edges, but the PPG privacy overlay vector (source/sink/
-    permission/sink-type/PI-category) is zeroed — isolating the contribution of the overlay.
+    privacy_features=False is the APG-ONLY ablation: the node keeps its type embedding and the
+    graph keeps its structure/edges, but the PPG privacy overlay vector (source/sink/permission/
+    sink-type/PI-category) is zeroed — isolating the contribution of the overlay.
+    token_features=True fills the reserved TOKEN_HOOK_DIM slots with a hashing-trick bag-of-tokens
+    over the node's code+callee (the statement-token-embedding hook), L1-normalized.
     """
     type_id = _NODE_TYPE_IX.get(n.get("label", ""), _NODE_TYPE_IX["Statement"])
     feat = [0.0] * FEAT_DIM
-    if not privacy_features:
-        return type_id, feat
-    feat[0] = 1.0 if _truthy(n.get("is_source")) else 0.0
-    feat[1] = 1.0 if _truthy(n.get("is_sink")) else 0.0
-    feat[2] = 1.0 if n.get("permission") else 0.0
-    base = 3
-    st = n.get("sink_type", "")
-    if st in _SINK_IX:
-        feat[base + _SINK_IX[st]] = 1.0
-    base += len(SINK_TYPES)
-    cat = n.get("category", "") or ""
-    feat[base + _PI_IX.get(cat, _PI_IX["OTHER"])] = 1.0 if cat else 0.0
-    # remaining TOKEN_HOOK_DIM slots stay zero (hook).
+    if privacy_features:
+        feat[0] = 1.0 if _truthy(n.get("is_source")) else 0.0
+        feat[1] = 1.0 if _truthy(n.get("is_sink")) else 0.0
+        feat[2] = 1.0 if n.get("permission") else 0.0
+        base = 3
+        st = n.get("sink_type", "")
+        if st in _SINK_IX:
+            feat[base + _SINK_IX[st]] = 1.0
+        base += len(SINK_TYPES)
+        cat = n.get("category", "") or ""
+        feat[base + _PI_IX.get(cat, _PI_IX["OTHER"])] = 1.0 if cat else 0.0
+    if token_features:
+        toks = _tokens(n)
+        for tok in toks:
+            feat[_TOKEN_BASE + (_stable_hash(tok) % TOKEN_HOOK_DIM)] += 1.0
+        s = sum(feat[_TOKEN_BASE:])
+        if s > 0:
+            for i in range(_TOKEN_BASE, FEAT_DIM):
+                feat[i] /= s
     return type_id, feat
 
 
-def record_to_data(rec: dict, privacy_features: bool = True) -> Data:
+def record_to_data(rec: dict, privacy_features: bool = True,
+                   token_features: bool = False) -> Data:
     """Convert one ADPPG record (with subgraph + labels) into a PyG Data graph."""
     nodes = rec["subgraph"]["nodes"]
     idx = {n["id"]: i for i, n in enumerate(nodes)}
     type_ids, feats = [], []
     for n in nodes:
-        t, f = _node_features(n, privacy_features)
+        t, f = _node_features(n, privacy_features, token_features)
         type_ids.append(t)
         feats.append(f)
 
@@ -109,10 +136,12 @@ def record_to_data(rec: dict, privacy_features: bool = True) -> Data:
     return data
 
 
-def load_splits(dataset_dir: str | Path, privacy_features: bool = True) -> Dict[str, List[Data]]:
+def load_splits(dataset_dir: str | Path, privacy_features: bool = True,
+                token_features: bool = False) -> Dict[str, List[Data]]:
     """Load adppg.jsonl + splits.json -> {split: [Data,...]}.
 
     privacy_features=False loads the APG-ONLY ablation view (privacy overlay zeroed).
+    token_features=True fills the reserved statement-token-embedding hook.
     """
     dataset_dir = Path(dataset_dir)
     records = {}
@@ -122,5 +151,6 @@ def load_splits(dataset_dir: str | Path, privacy_features: bool = True) -> Dict[
             records[r["prcs_id"]] = r
     with open(dataset_dir / "splits.json", encoding="utf-8") as f:
         splits = json.load(f)
-    return {s: [record_to_data(records[pid], privacy_features) for pid in ids if pid in records]
+    return {s: [record_to_data(records[pid], privacy_features, token_features)
+                for pid in ids if pid in records]
             for s, ids in splits.items()}
