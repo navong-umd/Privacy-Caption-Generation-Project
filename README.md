@@ -192,6 +192,7 @@ Document Analysis Module/      existing Stage 3 (API docs → personal_info_resu
 | Doc | What's in it |
 |---|---|
 | **[docs/dashboard.html](docs/dashboard.html)** | 📊 visual showcase — pipeline, stage/gate status, corpus stats |
+| **[docs/RESULTS.md](docs/RESULTS.md)** | 📈 preliminary end-to-end results — classification, PPG-vs-APG ablation, caption quality (LLM-judged) |
 | [DISPLAY.md](DISPLAY.md) | Neo4j display guide — load an app, style it, run the Cypher query library |
 | [docs/PROJECT.md](docs/PROJECT.md) | durable spec — schemas, run order, decisions (single source of truth) |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | notable decisions & insights (for the paper) |

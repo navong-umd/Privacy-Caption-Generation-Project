@@ -147,3 +147,22 @@
   better than code2seq", to be confirmed by the G3 human study. Example (Twitter db-info→network):
   LLM "This app accesses your database information... processes and shares this data over the network..."
   vs baseline "getCount value flows to applyAndAckSettings; app appears to share this data."
+
+## §Ablation — the PPG privacy overlay helps classification (real, non-bootstrap)
+- Same ConvGNN / same splits+seed, node features WITH vs WITHOUT the privacy overlay (APG-only =
+  node-type embedding + graph structure, overlay vector zeroed via `load_splits(privacy_features=False)`).
+  On the 100-flow human-labeled TikTok test split (banner cleared): **overall macro-F1 0.421 (full PPG)
+  vs 0.396 (APG-only), Δ +0.025**, and the overlay helps on ALL four metrics (practice macro +0.021,
+  purpose macro +0.030, practice micro +0.016, purpose micro +0.007). `privacy_overlay_helps=true`.
+- This is the empirical core of the novelty claim (PPG > APG-only). Margin is modest but consistent;
+  a balanced human-labeled set + the reserved statement-token encoder should widen it. Directional
+  until human-verified labels (same caveat as G2), but it is computed on the non-weak test split.
+
+## §Review — adversarial self-review caught 5 real bugs
+- A find→verify workflow (16 agents) over the 6 new modules surfaced 10 findings; the verify pass
+  confirmed 5 and rejected 5. All 5 were genuine: cache dropped LLM provenance (reported "cache" not
+  "llm:<prov>"); tainted relay nodes lost their PI category; nutrition `third_parties` listed on-device
+  sinks (Gson/FileIO/Log/SQLite) as ad/analytics recipients (missing egress gate); the judge's JSON
+  extraction was greedy and its score coercion could crash on non-int model output. Lesson: unit tests
+  passed on all 6 yet three bugs only manifested on real pipeline data / the optional LLM path — a
+  reminder to review against the real data model, not just the fixture.

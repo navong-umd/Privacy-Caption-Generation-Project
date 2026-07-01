@@ -210,3 +210,25 @@
   vs baseline "getCount value flows to applyAndAckSettings; app appears to share this data."
 - Cost-bounded by `--per-app`; pipeline default stays offline mock. Still no human caption references,
   so BLEU/ROUGE remains "no references" — caption quality is a G3/user-study judgement.
+
+## Phase M — LLM-as-judge caption evaluation
+- `step4_eval/caption_judge.py`: automated stand-in for missing human caption references. Scores each
+  caption's faithfulness + readability (1-5) and runs a blind, order-balanced pairwise PPG-LLM-vs-
+  Code2Seq choice. Offline mock judge (deterministic) for tests; real judge via `--provider`.
+- **Real result (gpt-4o judge, 70-caption sample):** PPG-LLM **accuracy 4.59 / readability 4.56** vs
+  baseline **2.74 / 2.23**; PPG-LLM preferred **70/70 (100%)**. Banner: LLM-JUDGED (not human).
+- **Tests:** `tests/test_caption_judge.py` (5, incl. json/score robustness). 
+
+## Phase N — PPG-vs-APG ablation
+- `step2_convgnn/ablation.py` + a `privacy_features` flag through `data.load_splits`/`train`: trains
+  the model WITH vs WITHOUT the privacy overlay (APG-only = type embedding + structure, overlay zeroed).
+- **Real result (human-labeled test, banner cleared):** overall macro-F1 **0.421 (full PPG) vs 0.396
+  (APG-only), Δ +0.025**; overlay helps on ALL four metrics. `privacy_overlay_helps=true` — the
+  empirical core of the novelty. `tests/test_ablation.py` (2).
+
+## Phase O — Adversarial self-review + fixes
+- Find→verify Workflow (16 agents) over the 6 new modules: 10 findings → **5 confirmed, all fixed**
+  (cache provenance, tainted-node PI category, nutrition third-party egress gate, judge JSON/score
+  robustness). Tests updated/added. **Full suite: 78 passed.**
+- Wrote `docs/RESULTS.md` aggregating corpus + classification (G2) + ablation + caption judge +
+  compliance, with the LLM-label / LLM-judge caveats up front. All results reproducible from configs+seed.
