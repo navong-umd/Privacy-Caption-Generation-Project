@@ -23,15 +23,12 @@ import pandas as pd
 
 from pplib.io_utils import dump_json, ensure_dir, get_logger, load_json, parse_app_id
 from pplib.io_utils import method_class, method_short_name, stmt_method_id
+from pplib.prcs_schema import PRCS_INDEX_COLUMNS, PRCS_SCHEMA_VERSION
 
 log = get_logger("extract_prcs")
 
-# fields written to the flat index CSV (subgraph/snippet live in the per-PRCS JSON)
-INDEX_COLUMNS = [
-    "prcs_id", "app_package", "apk_filename", "class_name", "method_name",
-    "method_signature", "source_api", "sink_api", "sink_type", "pi_type",
-    "permission", "privacy_threat", "hop_count", "n_nodes", "n_edges",
-]
+# Alias for backward compat with any external caller that imports INDEX_COLUMNS.
+INDEX_COLUMNS = PRCS_INDEX_COLUMNS
 
 
 @dataclass
@@ -53,18 +50,30 @@ class PRCS:
     hop_count: int
     code_snippet: str
     subgraph: dict
+    # Phase 7: full provenance chain from taint path + Phase 5 per-hop rules.
+    taint_path: List[str] = field(default_factory=list)
+    taint_rules: List[str] = field(default_factory=list)
     involved_methods: List[str] = field(default_factory=list)
+    schema_version: str = PRCS_SCHEMA_VERSION
 
     def index_row(self) -> dict:
         return {
-            "prcs_id": self.prcs_id, "app_package": self.app_package,
-            "apk_filename": self.apk_filename, "class_name": self.class_name,
-            "method_name": self.method_name, "method_signature": self.method_signature,
-            "source_api": self.source_api, "sink_api": self.sink_api,
-            "sink_type": self.sink_type, "pi_type": self.pi_type,
-            "permission": self.permission, "privacy_threat": self.privacy_threat,
+            "prcs_id": self.prcs_id,
+            "schema_version": self.schema_version,
+            "app_package": self.app_package,
+            "apk_filename": self.apk_filename,
+            "class_name": self.class_name,
+            "method_name": self.method_name,
+            "method_signature": self.method_signature,
+            "source_api": self.source_api,
+            "sink_api": self.sink_api,
+            "sink_type": self.sink_type,
+            "pi_type": self.pi_type,
+            "permission": self.permission,
+            "privacy_threat": self.privacy_threat,
             "hop_count": self.hop_count,
-            "n_nodes": len(self.subgraph["nodes"]), "n_edges": len(self.subgraph["edges"]),
+            "n_nodes": len(self.subgraph["nodes"]),
+            "n_edges": len(self.subgraph["edges"]),
         }
 
 
@@ -176,6 +185,9 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
 
         src_d, snk_d = G.nodes.get(src, {}), G.nodes.get(snk, {})
         src_method = G.nodes.get(src, {}).get("method_id") or stmt_method_id(src)
+        # Phase 5 per-hop rules (parallel to path). Empty when the source TaintPath
+        # pre-dates Phase 5 (no `reasons` field); no crash, just no per-hop provenance.
+        reasons = tp.get("reasons") or []
         prcs = PRCS(
             prcs_id=_stable_id(app_id, src, snk),
             app_package=pkg, apk_filename=apk,
@@ -193,6 +205,8 @@ def extract_from_graph(G: nx.MultiDiGraph, taint_paths: List[dict]) -> List[PRCS
             hop_count=len(path) - 1,
             code_snippet=_build_snippet(G, path),
             subgraph={"nodes": nodes, "edges": edges},
+            taint_path=list(path),
+            taint_rules=list(reasons),
             involved_methods=methods,
         )
         out.append(prcs)
