@@ -1,0 +1,641 @@
+[
+  {
+    "module_name": "Static Code Analysis / Androguard-based APK Disassembly + APG Construction",
+    "responsibility": "Given an Android .apk, disassemble it (Dalvik bytecode via androguard) and emit an App Property Graph (APG) \u00e2\u20ac\u201d four intertwined views: AST (Method/Statement structure), MCG (method call graph), ICFG (intra-procedural next-statement control flow), and DDG (data-dependence between register-writing and register-reading statements). This is Stage 1-2 of the pipeline: it produces the {AST,MCG,ICFG,DDG}_{nodes,edges}.csv schema that Stage 4 (PPG) consumes. The in-memory APG (classes, methods, statements, has_method, has_statement, calls, icfg_next, data_depends) is defined once in pplib/apg_model.py and shared by every downstream stage.",
+    "key_files": [
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\adapters\\run_apg_csv.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\pplib\\apg_model.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\pplib\\schema.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\pplib\\io_utils.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\adapters\\fetch_fdroid.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\adapters\\fetch_androzoo.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\Static Code Analysis Module\\Sourcecode\\Consolidated Code\\androguard_analysis_APG_III_Update1Fixed_14.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\Static Code Analysis Module\\Sourcecode\\Consolidated Code\\androguard_analysis_MCG_reachability.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\Static Code Analysis Module\\Sourcecode\\androguard_analysis_APG_Bar.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\Static Code Analysis Module\\input\\APK\\sample.apk",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\stage4_ppg\\build_ppg.py",
+      "C:\\Users\\kings\\PrivacyPolicyResearch\\Privacy-Caption-Generation-Project\\step2_prcs\\extract_prcs.py"
+    ],
+    "status": "canonical",
+    "research_role": "Stage 1-2 of the APK \u00e2\u2020\u2019 APG \u00e2\u2020\u2019 PPG \u00e2\u2020\u2019 PRCS \u00e2\u2020\u2019 PAcT \u00e2\u2020\u2019 Model \u00e2\u2020\u2019 Caption pipeline. Emits the AST/MCG/ICFG/DDG that everything else (PPG overlay, taint propagation, PRCS slicing, ConvGNN featurization) is built on. The disassembly + APG-construction logic lives in `adapters/run_apg_csv.py`; the in-memory dataclass and CSV read/write contract lives in `pplib/apg_model.py`. `pplib/schema.py` freezes the node/edge column names (APG_NODE_COLUMNS, APG_EDGE_COLUMNS) that both the legacy script and the adapter must obey so downstream stages don't care which produced them.",
+    "gaps_or_issues": [
+      "NO direct tests for the adapter: `tests/` has zero files matching `run_apg_csv`, `apg_model`, or `apg` \u00e2\u20ac\u201d the only APG-related test is `tests/test_stage4_ppg.py` which exercises the CONSUMER (PPG builder) via a synthetic fixture, not the disassembler. Real-APK adapter behavior is only exercised end-to-end by `pipeline.run_corpus`.",
+      "Two divergent implementations of the same disassembly logic: `adapters/run_apg_csv.py` (canonical, mirrors Stage 2) and `Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py` (legacy, hard-coded to `C:\\Users\\2015n\\OneDrive\\Desktop\\...` and requires a running Neo4j at bolt://localhost:7687). The adapter's docstring explicitly acknowledges it MIRRORS the legacy script \u00e2\u20ac\u201d but there is no test asserting the two stay in sync, so the mirror can silently drift.",
+      "Legacy Static Code Analysis Module carries at least 6 near-duplicate androguard scripts (androguard_analysis_APG_III_Update1Fixed_14.py, _14_Bar.py, androguard_analysis_APG_Bar.py, and androguard_analysis_MCG_reachability{,_Feasible,_Full,_Update}.py). None are imported anywhere and none are referenced by the current pipeline (grep for `MCG_reachability` returns no callers). Dead code with unclear provenance.",
+      "`Static Code Analysis Module/Sourcecode/Consolidated Code/preprocessingPP/androguard_analysis_locatingPP_Fixed.py` also depends on androguard but sits in a preprocessingPP folder that's not wired into the pipeline; role/status undocumented.",
+      "APG edge sanity: adapter emits `apg.has_method` from method traversal but the CSV `write_apg` never writes a dedicated HAS_METHOD edge file \u00e2\u20ac\u201d HAS_METHOD is reconstructed on load from method ids (see `pplib/apg_model.load_apg` comment: 'Neo4j-only in Stage 2'). That is intentional but subtle and undocumented outside a code comment; a schema check would help.",
+      "androguard is an optional install (lazy import in the adapter, absent from `requirements-stage4.txt` per README quick-start which says `pip install androguard` separately). No graceful error/skip if a user runs `--apk` without it \u00e2\u20ac\u201d the ImportError propagates from inside `run_apg_csv`.",
+      "No CLI test for `python -m adapters.run_apg_csv --apk ...`; only the pipeline glue tests exist. The sole real .apk in the repo is `Static Code Analysis Module/input/APK/sample.apk` and nothing under `tests/` uses it.",
+      "`adapters/__init__.py` and `pplib/__init__.py` are single-line stubs \u00e2\u20ac\u201d no re-exports; every consumer imports the concrete module path. Fine, but the package boundary isn't asserted anywhere.",
+      "The `Static Code Analysis Module` tree ships compiled `__pycache__/user_Interface_Web_PPGen.cpython-313.pyc` alongside a `user_Interface_Web_*.py` UI that's unrelated to disassembly \u00e2\u20ac\u201d leftover artifacts from an earlier flask UI, no docs on whether it should still exist.",
+      "GraphML export in the PPG stage (`stage4_ppg/build_ppg.py::export_graph`) has to `_xml_safe`-strip NULL/control chars produced by decompiled real-APK code \u00e2\u20ac\u201d an implicit warning that the raw APG statements coming out of androguard contain XML-invalid bytes that would break any XML-based downstream consumer.",
+      "No docs/ page dedicated to this subsystem: docs/PROJECT.md \u00c2\u00a78 is referenced by README but disassembly-specific docs (which SuSi source keys map to which androguard invoke output, how the callee string is normalized) are scattered as comments in `run_apg_csv._parse_callee` and `androguard_analysis_APG_III_Update1Fixed_14.parse_invoke_callee`."
+    ],
+    "entry_points": [
+      "python -m adapters.run_apg_csv --apk <apk> --out data/apg  (canonical CLI: APK -> {AST,MCG,ICFG,DDG}_{nodes,edges}.csv)",
+      "adapters.run_apg_csv.run_apg_csv(apk_path, out_dir, write=True) -> APG  (programmatic; write=False keeps it in-memory for the corpus runner)",
+      "pipeline.run_pipeline --apk <apk>  (imports run_apg_csv lazily, then hands off apg_dir to stage4_ppg.build_ppg)",
+      "pipeline.run_corpus --apks data/corpus  (iterates .apk files, uses in-memory APG to avoid ~1 GB CSV per app)",
+      "pplib.apg_model.load_apg(apg_dir) -> APG  (canonical read side for downstream stages)",
+      "pplib.apg_model.write_apg(apg, apg_dir)  (canonical CSV writer, mirrors Stage 2 exact style)",
+      "LEGACY (not wired): `python Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py` \u00e2\u20ac\u201d runs standalone but hard-codes `C:\\Users\\2015n\\OneDrive\\Desktop\\...` paths and requires Neo4j @ bolt://localhost:7687; cannot run as-is on this machine."
+    ],
+    "external_deps": [
+      "androguard (androguard.misc.AnalyzeAPK) \u00e2\u20ac\u201d lazy import; only needed for real .apk runs. NOT in requirements-stage4.txt; the README quick-start installs it separately with `pip install androguard`.",
+      "loguru \u00e2\u20ac\u201d pulled in transitively by androguard; the adapter silences its DEBUG stream (`_loguru.remove()`) because androguard logs one line per method (gigabytes on real APKs).",
+      "networkx \u00e2\u20ac\u201d used by the LEGACY Static Code Analysis Module script to build AST/MCG/ICFG/DDG in memory before CSV export. The canonical adapter skips networkx and writes CSVs directly from lists.",
+      "pandas \u00e2\u20ac\u201d CSV read/write in `pplib.apg_model` and in the legacy script.",
+      "pyyaml \u00e2\u20ac\u201d configs consumed by downstream stages (adapter itself doesn't read YAML).",
+      "neo4j Python driver \u00e2\u20ac\u201d ONLY used by the legacy `androguard_analysis_APG_III_Update1Fixed_14.py` and `androguard_analysis_MCG_reachability.py`. The canonical adapter path never touches Neo4j (Neo4j is downstream/optional via `stage4_ppg.neo4j_loader`).",
+      "certifi (optional, transitive) \u00e2\u20ac\u201d used by adapters/fetch_androzoo.py for verified TLS to androzoo.uni.lu; unrelated to disassembly itself but co-located in adapters/."
+    ],
+    "canonical_vs_experimental_notes": "CANONICAL PATH (used by the current pipeline): APK -> `adapters/run_apg_csv.py::run_apg_csv()` -> in-memory `pplib.apg_model.APG` -> (optionally written as {AST,MCG,ICFG,DDG}_{nodes,edges}.csv via `pplib.apg_model.write_apg`) -> loaded by `pplib.apg_model.load_apg()` -> `stage4_ppg.build_ppg.PPGBuilder.build(apg)` -> `step2_prcs.extract_prcs`. This is what `pipeline/run_pipeline.py` and `pipeline/run_corpus.py` invoke; it is the only path proven on the 8-APK AndroZoo corpus (10,721 PRCS). LEGACY PATH (the entire `Static Code Analysis Module/` tree): `androguard_analysis_APG_III_Update1Fixed_14.py` + variants. These are the ORIGINAL Stage 1-2 scripts the current adapter was written to replace. Their disassembly logic is byte-for-byte the same (adapter's `_parse_callee`, `_written_var`, `_read_vars` are line-copies of the legacy `parse_invoke_callee` / `extract_written_variables` / `extract_read_variables`) and both target the same CSV schema (`pplib.schema.APG_NODE_COLUMNS/APG_EDGE_COLUMNS`). But the legacy scripts (a) hard-code the previous author's Windows user path (`C:\\\\Users\\\\2015n\\\\...`) and (b) require a running Neo4j, so they cannot execute in this checkout. The README explicitly marks the folder \"existing Stage 1-2 (androguard APG -> CSV + Neo4j) \u00e2\u20ac\u201d untouched\". Treat legacy as reference/audit material only. There is one PATH-INDEPENDENT contract that binds both: `pplib/schema.py` \u00e2\u20ac\u201d the shared column list is the ONLY thing keeping the mirror honest, and drift there would silently break Stage 4.",
+    "duplicates_or_overlaps": [
+      "`adapters/run_apg_csv.py` intentionally MIRRORS `Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py` \u00e2\u20ac\u201d same disassembly, same output schema, no shared source of truth. Nothing enforces they stay in sync.",
+      "Six variants of the legacy script in `Static Code Analysis Module/Sourcecode/Consolidated Code/`: androguard_analysis_APG_III_Update1Fixed_14.py, androguard_analysis_APG_III_Update1Fixed_14_Bar.py, and four androguard_analysis_MCG_reachability{,_Feasible,_Full,_Update}.py. All appear to be author-side iterations; none are referenced by the pipeline (grep for their names returns zero callers outside their own files).",
+      "One more legacy Bar variant one level up: `Static Code Analysis Module/Sourcecode/androguard_analysis_APG_Bar.py`. Also unreferenced.",
+      "`Static Code Analysis Module/Sourcecode/Consolidated Code/preprocessingPP/androguard_analysis_locatingPP_Fixed.py` uses androguard for a different purpose (locating privacy-policy URLs). Sits in the same 'Static Code Analysis' module but is orthogonal to APG construction \u00e2\u20ac\u201d misleading colocation.",
+      "MCG semantics appear in two places: `androguard_analysis_MCG_reachability*.py` (legacy: Neo4j BFS to sensitive APIs) and `stage4_ppg/taint.py` (canonical: intra+inter-procedural BFS over DDG/ICFG/CALLS entry+return). They aim at similar 'reachability from entry to sensitive API' questions but the canonical path replaced the Neo4j-mediated version.",
+      "Stage 2 legacy writes Class nodes and HAS_METHOD edges ONLY into Neo4j (not CSV); `pplib/apg_model.load_apg` reconstructs both from method ids. Not a bug \u00e2\u20ac\u201d an explicit workaround documented in code comments \u00e2\u20ac\u201d but it means the CSV files alone under-specify the graph relative to what Neo4j sees."
+    ]
+  },
+  {
+    "module_name": "Document Analysis / Android knowledge base (Document Analysis Module/ + step3_policy/)",
+    "responsibility": "Two logically distinct sub-modules share this \"document analysis\" area. (1) `Document Analysis Module/` \u00e2\u20ac\u201d legacy, imported Android-docs analysis pipeline that scrapes the developer.android.com reference for sensitive Android API methods, parses the descriptions with Stanza dependency parsing, and produces an API\u00e2\u2020\u2019personal-information table (`personal_info_results.csv`); it also parses the SuSi source/sink categorization corpus (`CatSources_v0_9.txt`/`CatSinks_v0_9.txt`) into `formatted_sources.csv`/`formatted_sinks.csv`. There is no API\u00e2\u2020\u2019permission mapping computed here \u00e2\u20ac\u201d permission mapping exists only as a placeholder configured in `stage4_ppg` catalogs (permission_map). (2) `step3_policy/assemble.py` \u00e2\u20ac\u201d the *current* pipeline \"Step 3\": takes per-flow facts from `data/dataset/adppg.jsonl` plus generated captions from `data/captions/captions.json`, unions each app's collected PI categories, purposes, recipients (sharing sinks), maps them to GDPR/CCPA obligations via `configs/gdpr_ccpa_map.yaml`, and writes per-app `notice.md` + `policy.md` + a summary `policy.json`. WEAK-labeled facts get a DRAFT banner.",
+    "key_files": [
+      "Document Analysis Module/Read me.txt",
+      "Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info_final.py",
+      "Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info_Save.py",
+      "Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info_Save_Test.py",
+      "Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info.py",
+      "Document Analysis Module/Sourcecode/utils_doc_des.py",
+      "Document Analysis Module/Sourcecode/utils_clean_method_name.py",
+      "Document Analysis Module/Sourcecode/utils_dpr_score.py",
+      "Document Analysis Module/Sourcecode/structure_input_data.py",
+      "Document Analysis Module/Sourcecode/Test/utilsTest.py",
+      "Document Analysis Module/Sourcecode/Test/utilsTest_api_Des_to_Info.py",
+      "Document Analysis Module/Sourcecode/Test/utilsTest_clean_method_name.py",
+      "Document Analysis Module/Sourcecode/Test/utilsTest_doc_des.py",
+      "Document Analysis Module/Sourcecode/Test/utilsTest_dpr_score.py",
+      "Document Analysis Module/Sourcecode/Other/personal_Info_Ext.py",
+      "Document Analysis Module/Sourcecode/Other/retrieve_API_Des.py",
+      "Document Analysis Module/Sourcecode/Other/api_Des_to_Info_Test.py",
+      "Document Analysis Module/Sourcecode/Other/utils.py",
+      "Document Analysis Module/Sourcecode/Other/main.py",
+      "Document Analysis Module/esalib/ (empty \u00e2\u20ac\u201d expected ESA Java tool for DPR similarity)",
+      "Document Analysis Module/input/CatSources_v0_9.txt",
+      "Document Analysis Module/input/CatSinks_v0_9.txt",
+      "Document Analysis Module/input/reachability_check_feasible.csv",
+      "Document Analysis Module/input/reachability_check.csv",
+      "Document Analysis Module/input/prefix.txt",
+      "Document Analysis Module/output/personal_info_results.csv",
+      "Document Analysis Module/output/formatted_sources.csv",
+      "Document Analysis Module/output/formatted_sinks.csv",
+      "Document Analysis Module/output/setup_esa.ps1",
+      "step3_policy/__init__.py",
+      "step3_policy/assemble.py",
+      "tests/test_step3_policy.py",
+      "configs/gdpr_ccpa_map.yaml (consumed by assemble)",
+      "configs/ppg.yaml (references Document Analysis Module outputs)"
+    ],
+    "status": "canonical",
+    "research_role": "This area straddles two positions in the APK \u00e2\u2020\u2019 APG \u00e2\u2020\u2019 PPG \u00e2\u2020\u2019 PRCS \u00e2\u2020\u2019 PAcT \u00e2\u2020\u2019 Model \u00e2\u2020\u2019 Caption pipeline. `Document Analysis Module/` sits BEFORE PPG (it feeds it): its two output CSVs \u00e2\u20ac\u201d `personal_info_results.csv` (Stanza-derived natural-language PI types for Android APIs) and `formatted_sources.csv` (SuSi source signatures) \u00e2\u20ac\u201d are loaded by `stage4_ppg/catalogs.py:SourceCatalog` (paths in `configs/ppg.yaml`) as Tier 2 (SuSi recall) and Tier 3 (NL pi_type enrichment) of source detection, on top of a curated `known_sources` Tier 1. `step3_policy/assemble.py` sits AFTER the Caption stage: it consumes both the caption text and the facts on which captions were generated to render human-facing privacy notices / policies with GDPR/CCPA mapping \u00e2\u20ac\u201d effectively the terminal deliverable of the whole pipeline (caption + policy). It is imported and driven by `pipeline/run_pipeline.py` (step 6) and `pipeline/run_corpus.py`.",
+    "gaps_or_issues": [
+      "`Document Analysis Module/` is legacy imported material: hard-coded absolute paths under `C:\\Users\\2015n\\OneDrive\\...` in every script (`utils_main_api_Des_to_Info_final.py:66`, `utils_main_api_Des_to_Info_Save.py:15`, `utils_dpr_score.py:5`, `structure_input_data.py:7`) \u00e2\u20ac\u201d not runnable on this machine as-is; only the pre-computed CSV artifacts under `output/` are actually used.",
+      "`esalib/` directory is EMPTY \u00e2\u20ac\u201d the DPR/ESA similarity scoring tool (`utils_dpr_score.py` shells out to `run_analyzer.bat`) is missing. Any re-run of `utils_main_api_Des_to_Info_final.py` would fail on `dpr_score()`. `output/setup_esa.ps1` presumably installs it but is not part of the pipeline.",
+      "No API->permission mapping exists in this subsystem despite the Read-me claiming PScout-style permission analysis is planned. The `personal_info_results.csv` output has NO `permission` column; permission tagging happens later in `stage4_ppg/catalogs.py` via a `permission_map` in `configs/ppg.yaml`, keyed off SuSi categories, not off `Document Analysis Module` output.",
+      "`personal_info_results.csv` is noisy: sampled rows show most entries return 'Documentation not found.' (the scraper only resolves official `android.*` classes; `androidx.*`, `com.google.ar.*`, and app packages fail). FINDINGS.md \u00c2\u00a70 records ~52/382 rows have a non-empty Personal Information value.",
+      "Massive code duplication under `Document Analysis Module/Sourcecode/`: `utils_main_api_Des_to_Info.py`, `utils_main_api_Des_to_Info_Save.py`, `utils_main_api_Des_to_Info_Save_Test.py`, `utils_main_api_Des_to_Info_final.py` are four near-clones of the same script differing only in output-writing details. `Sourcecode/Other/api_Des_to_Info_Test.py`, `personal_Info_Ext.py`, `retrieve_API_Des.py` are byte-identical (5031 bytes each) further duplicates.",
+      "`Sourcecode/Test/` unit tests are stand-alone scripts (not pytest-discoverable \u00e2\u20ac\u201d filenames start with `utilsTest` not `test_`) and are not wired into the repo `tests/` suite; `conftest.py`/`pytest.ini` do not include this directory.",
+      "`step3_policy/` has ONLY one module (`assemble.py`) plus its `__init__.py`; there is no CLI beyond `python -m step3_policy.assemble` and no separation between rendering and requirement mapping \u00e2\u20ac\u201d everything is inline in one file. Fine for research scope, but coupled.",
+      "The `Read me.txt` in `Document Analysis Module/` describes the intended methodology (SuSi API selection, Stanford Parser, ESA similarity, Algorithm 1 for extraction) but the current implementation only implements a subset: Stanza replaces Stanford Parser, ESA is missing, and no `desc-tree`/`desc-dept` output artifacts are produced.",
+      "No documentation ties the two sub-modules together \u00e2\u20ac\u201d a reader would reasonably assume `Document Analysis Module/` and `step3_policy/` are related because they share the 'Step 3' label, but they perform completely different jobs (API\u00e2\u2020\u2019PI knowledge base vs. per-app policy assembly).",
+      "`Document Analysis Module/input/reachability_check_feasible.csv` is produced by `Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_MCG_reachability_Feasible.py` \u00e2\u20ac\u201d cross-module coupling by copy/paste of a CSV, not by import."
+    ],
+    "entry_points": [
+      "python -m step3_policy.assemble --dataset data/dataset --captions data/captions --out data/policy --map configs/gdpr_ccpa_map.yaml (canonical CLI, wired into pipeline/run_pipeline.py step 6 and pipeline/run_corpus.py)",
+      "step3_policy.assemble.assemble(dataset_dir, captions_dir, out_dir, cmap_path) (importable Python entry, imported by run_pipeline.py:26 and run_corpus.py:27 and tests/test_step3_policy.py:8)",
+      "Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info_final.py: main() \u00e2\u20ac\u201d legacy standalone script, run manually to regenerate personal_info_results.csv (not invoked by pipeline)",
+      "Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info_Save.py \u00e2\u20ac\u201d older duplicate variant of the same script",
+      "Document Analysis Module/Sourcecode/structure_input_data.py \u00e2\u20ac\u201d legacy standalone: turns SuSi CatSources/CatSinks .txt into formatted CSVs",
+      "Document Analysis Module/Sourcecode/Other/main.py \u00e2\u20ac\u201d 20-byte stub, effectively empty",
+      "No HTTP/service entry point \u00e2\u20ac\u201d everything is CLI or Python import"
+    ],
+    "external_deps": [
+      "pandas, tqdm, tabulate \u00e2\u20ac\u201d CSV I/O and console tables in legacy scripts",
+      "stanza (with en tokenize/pos/lemma/depparse models) \u00e2\u20ac\u201d dependency parsing in utils_main_api_Des_to_Info_final.py",
+      "nltk (punkt, stopwords) \u00e2\u20ac\u201d utils_clean_method_name.py",
+      "beautifulsoup4, requests \u00e2\u20ac\u201d utils_doc_des.py scrapes developer.android.com/reference (network dependency at run time)",
+      "External Java ESA tool via subprocess in utils_dpr_score.py \u00e2\u20ac\u201d expected under Document Analysis Module/esalib/run_analyzer.bat, currently MISSING (directory empty)",
+      "step3_policy imports only stdlib + pplib.io_utils (load_yaml, dump_json, ensure_dir, get_logger) and pplib.schema.BANNER_WEAK \u00e2\u20ac\u201d no external runtime deps beyond PyYAML pulled in by pplib.io_utils"
+    ],
+    "duplicates_or_overlaps": [
+      "Four near-identical scripts inside Document Analysis Module/Sourcecode/: utils_main_api_Des_to_Info.py, utils_main_api_Des_to_Info_Save.py, utils_main_api_Des_to_Info_Save_Test.py, utils_main_api_Des_to_Info_final.py \u00e2\u20ac\u201d same pipeline, differing only in save/test behaviour. `_final.py` is the one the docs treat as canonical; the others are redundant.",
+      "Document Analysis Module/Sourcecode/Other/api_Des_to_Info_Test.py, Other/personal_Info_Ext.py, Other/retrieve_API_Des.py are all 5031 bytes \u00e2\u20ac\u201d appear to be byte-identical duplicates in a scratch folder.",
+      "SuSi source/sink parsing exists in both `Document Analysis Module/Sourcecode/structure_input_data.py` (which produced the checked-in `formatted_sources.csv`/`formatted_sinks.csv`) and again functionally inside `stage4_ppg/catalogs.py:SourceCatalog._load_susi` and `SinkCatalog` (which re-reads those CSVs). Not truly redundant \u00e2\u20ac\u201d one produces, one consumes \u00e2\u20ac\u201d but both know the SuSi schema.",
+      "Test scripts under `Document Analysis Module/Sourcecode/Test/` (utilsTest_*.py) duplicate coverage that no longer runs in CI; the canonical test surface for this area in the current pipeline is `tests/test_step3_policy.py` alone.",
+      "The name 'Step 3' is overloaded: `Document Analysis Module/` is described as Stage 3 (API\u00e2\u2020\u2019PI) in README/PROJECT.md, and `step3_policy/` is Step 3 (policy assembly) in the new numbering. They are NOT the same subsystem, just share a numeric label; `step3_caption/` also lives adjacent."
+    ],
+    "canonical_vs_experimental_notes": "Overall status is CANONICAL for both halves, but for different reasons. (a) `step3_policy/assemble.py` is fully canonical: imported by `pipeline/run_pipeline.py` (step 6) and `pipeline/run_corpus.py`, covered by 4 pytest cases in `tests/test_step3_policy.py`, and its output (`data/policy/<pkg>/notice.md`, `policy.md`, `policy.json`) is the pipeline's terminal deliverable alongside captions. (b) `Document Analysis Module/` is LEGACY-canonical: the source .py scripts are effectively frozen (hard-coded Windows OneDrive paths for user `2015n`, missing external ESA tool, no tests wired to pytest), but the two CSV artifacts they produced \u00e2\u20ac\u201d `output/personal_info_results.csv` and `output/formatted_sources.csv` \u00e2\u20ac\u201d are load-bearing inputs to `stage4_ppg/catalogs.py:SourceCatalog` via `configs/ppg.yaml` (Tier 2 SuSi and Tier 3 NL enrichment). README \u00c2\u00a7\"Repo Layout\" explicitly labels this dir as \"existing Stage 3 (API docs \u00e2\u2020\u2019 personal_info_results.csv) \u00e2\u20ac\u201d untouched\". So the CSVs are canonical inputs; the scripts that generated them are frozen imported research code. Nothing here is broken in the sense of failing the pipeline \u00e2\u20ac\u201d the pipeline never re-runs them \u00e2\u20ac\u201d but they are not reproducible on a fresh machine without repairing the paths and restoring `esalib/`."
+  },
+  {
+    "module_name": "PriGen / Code2Seq legacy (PriGenLocal/)",
+    "responsibility": "Historical staging area from the project's original Jain-2022 framing (PriGen + code2seq). It was meant to hold third-party PriGen / Code2Seq source and matching test fixtures decompiled from real APKs. In its present state it contributes NOTHING at runtime: the two code sub-folders are empty stubs, and only a set of decompiled Java samples plus two raw APK files sit in test_apk/. Nothing in the current stage4-ppg-convgnn pipeline imports from or reads out of this directory.",
+    "key_files": [
+      "PriGenLocal/PDroid/ (empty directory \u00e2\u20ac\u201d no files at all)",
+      "PriGenLocal/code2seq/ (empty directory \u00e2\u20ac\u201d no files at all; no Code2Seq source, no configs, no vocabs, no weights)",
+      "PriGenLocal/test_apk/F-Droid/ (45 decompiled Java files, PRCS_0.java \u00e2\u20ac\u00a6 PRCS_44.java \u00e2\u20ac\u201d org.fdroid.fdroid location APIs)",
+      "PriGenLocal/test_apk/F-Droid_1/ (22 decompiled Java files)",
+      "PriGenLocal/test_apk/TikTok Lite/ (~427 decompiled Java files, PRCS_0.java \u00e2\u20ac\u00a6 PRCS_492.java)",
+      "PriGenLocal/test_apk/sample.apk (~11 MB raw APK \u00e2\u20ac\u201d orphan copy; the pipeline's actual sample.apk lives at 'Static Code Analysis Module/input/APK/sample.apk')",
+      "PriGenLocal/test_apk/tiktok.apk (~12 MB raw APK \u00e2\u20ac\u201d not referenced anywhere in code)",
+      "PriGenLocal/test_apk/F-Droid/PRCS_0.java (representative sample \u00e2\u20ac\u201d a Smali-style decompilation of TwilightManager.getLastKnownLocation, wrapped in `class PRCS_N { ... }` with the fully-qualified API signature in a Javadoc header)"
+    ],
+    "status": "legacy",
+    "research_role": "None in the live APK -> APG -> PPG -> PRCS -> PAcT -> Model -> Caption pipeline. The name PriGen is aspirational: nothing under PriGenLocal/ implements Code2Seq, exposes a model interface, provides training data in a code2seq-compatible format (.c2s / histograms / vocabs), or is wired into any run_pipeline / run_corpus / test entry point. The current pipeline builds PRCS itself in step2_prcs/ from PPG graphs (not from these pre-decompiled Java files) and the Code2Seq comparison baseline lives elsewhere at step3_caption/code2seq_baseline.py \u00e2\u20ac\u201d which is an explicit UNTRAINED placeholder (BASELINE_TAG = \"code2seq-baseline (untrained placeholder)\") that emits a template string from source/sink API names and never touches PriGenLocal/. In effect this directory is archived reference material: PRCS-style samples kept from an earlier attempt to reproduce Jain 2022's PriGen extractor.",
+    "gaps_or_issues": [
+      "Both PDroid/ and code2seq/ are completely empty on disk (0 files) \u00e2\u20ac\u201d the folder names promise implementations that were never checked in; either delete them or add a README explaining they are placeholders.",
+      "No model interface exists anywhere in PriGenLocal/ \u00e2\u20ac\u201d no Python module, no TF/PyTorch checkpoint, no config, no inference entry point, no CLI, no python -m target, no HTTP surface.",
+      "No training data in Code2Seq format is present (no .c2s files, no path-context vocabs, no target-word / node / path histograms). The ~494 PRCS_*.java files are raw decompiled source, not (code, caption) pairs, so they cannot train Code2Seq without an annotation pass.",
+      "No tests reference PriGenLocal/ (grep across the repo returns zero test hits); the only mentions in the entire codebase are two lines in docs/archive/PROJECT_PLAN.md, which is explicitly flagged as 'superseded' in the README.",
+      "sample.apk and tiktok.apk inside PriGenLocal/test_apk/ are dead copies \u00e2\u20ac\u201d the pipeline's actual sample.apk is 'Static Code Analysis Module/input/APK/sample.apk' (per adapters/run_apg_csv.py's docstring), and no code path opens the copies here. ~24 MB of untracked binary sitting in the source tree.",
+      "The PRCS_N.java naming collides conceptually with the live pipeline's PRCS artifact (step2_prcs/ subgraph JSON per source->sink flow) \u00e2\u20ac\u201d a reader is likely to confuse these decompiled per-method snippets with the current PRCS records, which are graph slices, not Java source.",
+      "No README, no LICENSE, no NOTICE inside PriGenLocal/ despite containing decompiled third-party app code from F-Droid / TikTok Lite \u00e2\u20ac\u201d no attribution, no provenance, no note on whether redistribution is permissible.",
+      "Directory is not gitignored and not called out in the README's repo map; it sits alongside real modules and looks canonical to a newcomer."
+    ],
+    "entry_points": [],
+    "external_deps": [],
+    "duplicates_or_overlaps": [
+      "Overlaps in name only with step3_caption/code2seq_baseline.py \u00e2\u20ac\u201d that file is the CURRENT Code2Seq stand-in used by the pipeline (an untrained placeholder emitting `{src} value flows to {snk}; app appears to {use|share} this data.`) and lives in the caption stage. PriGenLocal/code2seq/ is where a real trained Code2Seq baseline would presumably have gone; nothing was ever placed there.",
+      "The decompiled PRCS_*.java files under PriGenLocal/test_apk/ overlap conceptually \u00e2\u20ac\u201d but not in format \u00e2\u20ac\u201d with data/prcs/ produced by step2_prcs/. The live pipeline treats a PRCS as a JSON subgraph around one source->sink flow, whereas these are per-method Java text snippets. Different artifact, same name.",
+      "sample.apk / tiktok.apk here duplicate real APK fixtures used elsewhere: 'Static Code Analysis Module/input/APK/sample.apk' is the one adapters/run_apg_csv.py documents, and data/corpus/ + adapters/fetch_androzoo.py handle the real-corpus TikTok run described in README (G4). The copies here are unused stragglers."
+    ],
+    "canonical_vs_experimental_notes": "Legacy / archived. The only references to this directory in the whole repository are two lines in docs/archive/PROJECT_PLAN.md \u00e2\u20ac\u201d a file the README explicitly marks 'superseded original Jain-2022 framing (historical)'. That archived plan even labels PriGenLocal/test_apk/ as 'Test data only \u00e2\u20ac\u201d no processing scripts'. The current stage4-ppg-convgnn build (69 tests, 10,721 real PRCS on 7 apps) is a full replacement of the PriGen / Code2Seq direction: it substitutes PPG + RGCN (stage4_ppg/ + step2_convgnn/) for AST-path BiLSTM, and step3_caption/code2seq_baseline.py provides a lightweight in-repo Code2Seq placeholder for A/B comparison \u00e2\u20ac\u201d none of it depends on PriGenLocal/. Recommendation: mark PriGenLocal/ as archived (or move it under docs/archive/), delete the empty PDroid/ and code2seq/ stubs, and either drop the two orphan APKs or move them under data/corpus/ with provenance."
+  },
+  {
+    "module_name": "Privacy Property Graph (PPG) construction \u00e2\u20ac\u201d stage4_ppg/ + pplib/",
+    "responsibility": "Overlays privacy semantics onto the Stage 2 App Property Graph (APG) to produce the PPG \u00e2\u20ac\u201d a multi-labelled, multi-edged NetworkX MultiDiGraph plus CSV/GraphML/pickle exports. Concretely: (1) `pplib/apg_model.py` loads the four Stage 2 CSV pairs (AST/MCG/ICFG/DDG) into an in-memory APG and reconstructs Class + HAS_METHOD (which Stage 2 only writes to Neo4j); (2) `stage4_ppg/catalogs.py` classifies each APG Statement's callee as a PI Source (3 tiers: curated `known_sources`, SuSi `formatted_sources.csv`, and NL enrichment from Stage 3 `personal_info_results.csv`) or a Sink (rule catalog `configs/sinks.yaml` + unknown-sink egress-verb heuristic); (3) `stage4_ppg/taint.py` runs a BFS taint propagation over DATA_DEPENDS (+ optional ICFG_NEXT) with two inter-procedural rules (CALL-ARG: invoke-of-internal-method -> callee entry stmt; CALL-RET: a method that ever holds taint -> its call sites) capped by `max_depth`, `dedup_by_method`, `max_paths_per_source`; (4) `stage4_ppg/build_ppg.py` (`PPGBuilder`) copies the APG structure, adds overlay nodes (Source, Sink, DataItem, Store, Component) and overlay edges (TAINT_FLOW + PRIVACY_RELATION with sub-relation ACCESSES / OF_TYPE / WRITES_TO / PERSISTS_IN / SENDS_VIA / FLOWS_TO), tags each flow with LINDDUN-GO threats from `configs/ppg.yaml:linddun_map` (plus `Identifying` escalation for identifying PI categories), writes overlay props back onto Statement nodes, and finally invokes `semantics.enrich_graph` to attach a rule-based (or optional LLM) `what_it_does` to every node; (5) optional `neo4j_loader.py` upserts the whole graph into Neo4j and `cypher_runner.py` renders/executes the `configs/queries.cypher` library.",
+    "key_files": [
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/build_ppg.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/catalogs.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/taint.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/semantics.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/neo4j_loader.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/cypher_runner.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pplib/apg_model.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pplib/schema.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pplib/io_utils.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/ppg.yaml",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/sinks.yaml",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/queries.cypher",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_stage4_ppg.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_neo4j_display.py"
+    ],
+    "status": "canonical",
+    "entry_points": [
+      "CLI: python -m stage4_ppg.build_ppg --apg DIR --config configs/ppg.yaml --out data/ppg [--neo4j]",
+      "CLI: python -m stage4_ppg.cypher_runner --list | --show NAME | --run NAME (with --app-id/--source-id/--sink-id/--node-id)",
+      "Python API: stage4_ppg.build_ppg.build_ppg(apg_dir, config, out_dir, neo4j=False) -> PPGBuilder \u00e2\u20ac\u201d called by pipeline/run_pipeline.py and pipeline/run_corpus.py",
+      "Python API: PPGBuilder(cfg, llm_provider=None).build(apg) + export_csv/export_graph/export_taint/summary",
+      "Python API: pplib.apg_model.load_apg(apg_dir) -> APG (adapter over Stage 2 CSVs, used by builder and adapters)",
+      "Python API: stage4_ppg.neo4j_loader.load_ppg_to_neo4j(G, cfg) (optional, gated by --neo4j)"
+    ],
+    "external_deps": [
+      "networkx (MultiDiGraph + write_graphml)",
+      "pandas (CSV I/O for APG/PPG)",
+      "pyyaml (via pplib.io_utils.load_yaml \u00e2\u20ac\u201d configs/ppg.yaml, configs/sinks.yaml)",
+      "neo4j (Python driver \u00e2\u20ac\u201d OPTIONAL, imported lazily in neo4j_loader.py and cypher_runner.run_query; only needed with --neo4j / --run)",
+      "Stage 2 outputs (AST/MCG/ICFG/DDG {nodes,edges}.csv from `Static Code Analysis Module/`)",
+      "Stage 3 outputs (Document Analysis Module/output/personal_info_results.csv and formatted_sources.csv \u00e2\u20ac\u201d SuSi catalog)",
+      "stdlib: pickle, dataclasses, hashlib, collections.deque, re"
+    ],
+    "research_role": "Stage 4 of the APK -> APG -> PPG -> PRCS -> PAcT -> Model -> Caption pipeline. Consumes the Stage 2 APG (Class/Method/Statement + CALLS/ICFG_NEXT/DATA_DEPENDS) and the Stage 3 PI catalog (personal_info_results.csv, SuSi formatted_sources.csv), and produces the enriched PPG graph (PPG_nodes.csv, PPG_edges.csv, ppg.graphml, ppg.pkl) plus taint_paths.json. This graph is the direct input to `step2_prcs/extract_prcs.py` (which slices one subgraph per source->sink flow to form PRCS) and, further downstream, to the ADPPG dataset, the ConvGNN (RGCN over the PPG's typed edges), and the caption / policy generators. It is the pipeline's novel contribution (\"\u00e2\u02dc\u2026 Stage 4 PPG\" in the README) \u00e2\u20ac\u201d the module that turns a plain program graph into a privacy-annotated graph with named PI sources, typed sinks (network/storage/logging/ipc/serialization/heuristic_unknown), tainted paths, and LINDDUN-GO threat tags.",
+    "gaps_or_issues": [
+      "Heuristic taint is intentionally an over-approximation: DDG + ICFG + a coarse CALL-RET rule that marks EVERY call site of any tainted method as tainted (`succ.extend(callsites.get(m, []))` in taint.py) \u00e2\u20ac\u201d README \u00c2\u00a7Findings explicitly flags this; precision knobs (`follow_icfg:false`, `max_paths_per_source:25`) exist and pipeline/run_pipeline.py exposes `--precision` to switch them on, but the default config still uses the recall-oriented settings.",
+      "Sink classification is called twice per statement in build_ppg.py:104-122 (once for the source/sink precedence decision, then `self.sinks.classify(callee)` re-runs immediately after `continue`) \u00e2\u20ac\u201d wasteful on large APKs but not incorrect.",
+      "Sanity-only unit-test coverage: only `tests/test_stage4_ppg.py` (7 tests over adapter, catalogs, and one integration on a synthetic fixture) plus `tests/test_neo4j_display.py` \u00e2\u20ac\u201d no tests exercise real SuSi/personal_info CSVs, the LINDDUN escalation branch, the `formatted_match_by_method_name` recall mode, or the WhatItDoesCache eviction/reload paths.",
+      "GraphML export must strip XML-illegal control characters from decompiled smali (`_xml_safe` in build_ppg.py) and still catches all exceptions; failures are logged as a warning and the pipeline continues with pickle only \u00e2\u20ac\u201d no metric surfaced when this happens on real APKs.",
+      "The Neo4j path is genuinely optional but the ONLY visualization: `neo4j_loader.py` and the `--neo4j`/`--run` flags require an external server and the `neo4j` Python package; there is no built-in offline visualizer (only the Cypher-render mode of cypher_runner).",
+      "`pplib/apg_model.py:load_apg` bulk-reads all four CSVs into pandas DataFrames then materializes every row into Python dicts; on the 10,721-PRCS real corpus this is the memory bottleneck (no streaming/iter_rows path).",
+      "`known_sources` in configs/ppg.yaml is a hand-curated list (~16 APIs) \u00e2\u20ac\u201d sources of coverage/precision limits acknowledged only in README, not in the code; no test asserts that every category listed in `permission_map` has at least one signature.",
+      "Provenance is retained for descriptions (`what_it_does_src` = 'rule' | 'llm:<provider>' in semantics.py) and per-node `app_id` + sink `known` flag + source `tier`, but there is NO per-edge provenance on TAINT_FLOW: the flow does not record whether it came from DDG-only, ICFG, CALL-ARG, or CALL-RET traversal, so downstream consumers cannot filter by taint-rule strength.",
+      "`_idx(stmt_id)` in taint.py silently returns 0 when a statement id does not match the `{method}_stmt_{i}` convention, so method-entry selection can be wrong for adapters that use a different id format \u00e2\u20ac\u201d no assertion in load_apg.",
+      "The heuristic sink verb list overlaps with common non-egress verbs (e.g. `log`, `put`, `save`) and, combined with the CALL-RET taint rule, is the acknowledged source of the flow explosion on real APKs (per docs/FINDINGS.md \u00c2\u00a7 referenced by ppg.yaml comments)."
+    ],
+    "duplicates_or_overlaps": [
+      "`pplib/apg_model.py` is a deliberate ADAPTER over `Static Code Analysis Module/` (the upstream Stage 2 androguard->CSV+Neo4j script), NOT a duplicate \u00e2\u20ac\u201d README repo map explicitly marks the Static Code Analysis Module as 'untouched'. It reconstructs Class nodes and HAS_METHOD edges here because Stage 2 writes them only into Neo4j.",
+      "`stage4_ppg/neo4j_loader.py` (Stage 4 loader) parallels the Stage 2 Neo4j loader inside `Static Code Analysis Module/`. Different graph (PPG vs APG), same pattern (MERGE on id, UNWIND batches of 1000); no code shared.",
+      "PI-source data has three overlapping providers merged in `SourceCatalog`: (1) hand-curated `known_sources` inside configs/ppg.yaml, (2) SuSi's `Document Analysis Module/output/formatted_sources.csv`, (3) NL descriptions from `Document Analysis Module/output/personal_info_results.csv`. The precedence rule (`known` > `susi` > `susi_method`) is defined once in catalogs.py:88-97 and again referenced by build_ppg.py:106 ('curated source > catalog sink > SuSi-recall source > heuristic sink') \u00e2\u20ac\u201d the precedence lives in two places.",
+      "`_short()` / `_pi()` helpers in stage4_ppg/semantics.py duplicate similar string-shortening logic used by `step3_caption/generate.py` (per README) \u00e2\u20ac\u201d kept local by design ('so this module has no cross-package import') but is a small drift risk.",
+      "No overlap with a second PPG implementation in the repo \u00e2\u20ac\u201d this is the sole PPG builder."
+    ],
+    "canonical_vs_experimental_notes": "CANONICAL. `pipeline/run_pipeline.py` (line 22) and `pipeline/run_corpus.py` both import `from stage4_ppg.build_ppg import build_ppg` and call it as step 1 of the pipeline; `step2_prcs/extract_prcs.py` consumes its `ppg.pkl` / PPG_nodes.csv output; `step4_app/nutrition.py`, `step4_app/build_app.py`, `step4_eval/caption_judge.py`, `step2_convgnn/data.py|train.py|ablation.py`, `step3_caption/generate.py`, `step2_dataset/build_dataset.py|weak_labeler.py|ingest_annotations.py|make_annotation_sheet.py`, and `step4_userstudy/*` all transitively depend on `pplib.schema` / `pplib.io_utils`. Covered by `tests/test_stage4_ppg.py` (7 tests, all in the 69 passing per README) and `tests/test_neo4j_display.py`. Real-corpus run through this module (7 live APKs, 10,721 PRCS) is documented in README \u00c2\u00a7\"Real-corpus run\". The Neo4j loader and cypher_runner are optional add-ons for display (also canonical but gated). No experimental variants of the PPG builder live in the tree."
+  },
+  {
+    "module_name": "step2_prcs + step2_dataset (PRCS extraction & ADPPG dataset assembly)",
+    "responsibility": "Slices one Permission-Requiring Code Segment (PRCS) per source\u00e2\u2020\u2019sink taint path out of the PPG (step2_prcs), then assembles the ADPPG dataset from those PRCS: attaches multi-label Practice/Purpose labels (weak heuristic OR human overrides), exports Codr-ingestible JSON, and produces leakage-free APK-grouped train/val/test splits (step2_dataset). Also provides G1 tooling to turn the dataset into a human annotation spreadsheet and to re-ingest the filled sheet as human_labels.json.",
+    "key_files": [
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_prcs/__init__.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_prcs/extract_prcs.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_dataset/__init__.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_dataset/weak_labeler.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_dataset/build_dataset.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_dataset/make_annotation_sheet.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_dataset/ingest_annotations.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/weak_labels.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/sdk_catalog.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step2_prcs.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step2_dataset.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_g1_annotation.py"
+    ],
+    "status": "canonical",
+    "entry_points": [
+      "python -m step2_prcs.extract_prcs --ppg data/ppg --out data/prcs (CLI; also programmatic extract_prcs(ppg_dir, out_dir) and extract_from_graph(G, taint_paths))",
+      "python -m step2_dataset.build_dataset --prcs data/prcs --out data/dataset [--human-labels ... --test-app ... --test-cap N] (CLI; also programmatic build_dataset(prcs_dir, out_dir, config, human_labels, test_app, test_cap))",
+      "python -m step2_dataset.make_annotation_sheet --dataset data/dataset --out ann.csv [--prefill --sample N --split test] (G1 helper)",
+      "python -m step2_dataset.ingest_annotations --sheet ann.csv --out data/dataset/human_labels.json (G1 helper)",
+      "Invoked by pipeline/run_pipeline.py (extract_prcs + build_dataset) and pipeline/run_corpus.py (extract_from_graph per-APK in memory, then build_dataset once over the merged PRCS pool)"
+    ],
+    "external_deps": [
+      "networkx (MultiDiGraph subgraph/edge traversal)",
+      "pandas (INDEX_COLUMNS CSV, labels.csv multi-hot table)",
+      "pyyaml via pplib.io_utils.load_yaml (configs/weak_labels.yaml, sdk_catalog.yaml)",
+      "stdlib pickle/hashlib/json/csv/glob/random/argparse",
+      "pplib.io_utils (dump_json, load_json, ensure_dir, get_logger, parse_app_id, method_class, method_short_name, stmt_method_id)",
+      "pplib.schema (PRACTICE_LABELS = [Processing, Collecting, Sharing, Other], PURPOSE_LABELS = [Functionality, Advertisement, Analytics, Other], BANNER_WEAK)",
+      "Upstream: reads Stage 4 outputs data/ppg/ppg.pkl (pickled nx.MultiDiGraph) + data/ppg/taint_paths.json"
+    ],
+    "research_role": "Pipeline stage APK \u00e2\u2020\u2019 APG \u00e2\u2020\u2019 PPG \u00e2\u2020\u2019 **PRCS \u00e2\u2020\u2019 ADPPG** \u00e2\u2020\u2019 Model \u00e2\u2020\u2019 Caption. step2_prcs is the boundary between graph construction (Stage 4 PPG) and learning: it takes the PPG's cross-procedural taint paths and materialises each as a self-contained PRCS record (bounded subgraph + rendered code snippet + metadata). step2_dataset is the boundary between raw PRCS and the ConvGNN: it produces adppg.jsonl / labels.csv / splits.json (consumed by step2_convgnn) and a Codr export (consumed by human annotation Gate G1). It is also where the WEAK-vs-HUMAN label provenance is enforced (weak_banner, label_source), and where APK-grouped splits guarantee no train/test app leakage.",
+    "gaps_or_issues": [
+      "PRCS schema is defined only implicitly by the PRCS @dataclass and INDEX_COLUMNS list in extract_prcs.py \u00e2\u20ac\u201d no versioned JSON schema file (e.g. pplib/schema.py has label constants but no PRCS field spec), so downstream consumers rely on ad-hoc key names.",
+      "Subgraph is capped at CONTEXT_HOPS=1 and MAX_SUBGRAPH_NODES=150 as hard-coded module constants (not surfaced in configs/ or CLI); silently truncates real-app slices without a warning or a truncated=True flag on the record.",
+      "_idx() falls back to 0 for any statement id not matching '_stmt_<int>', which can silently break ordering of _method_statements if PPG naming ever changes; no defensive test.",
+      "code_snippet is a flat text render (`// <method_id>` header + '  <code>' lines); if a PPG node has neither 'code' nor 'type', the line becomes blank and the snippet loses fidelity \u00e2\u20ac\u201d no test asserts non-empty snippet content per line.",
+      "_stable_id truncates the SHA-1 to 12 hex chars; collision-safe at current corpus scale (~10k PRCS) but not proven, and no collision check is performed when writing per-PRCS JSON (a duplicate id would silently overwrite prcs_<id>.json).",
+      "Provenance is preserved via {app_package, apk_filename, class_name, method_name, method_signature, source_api, sink_api, involved_methods} on the record and a `provenance` block in the Codr export \u00e2\u20ac\u201d but the taint_path itself (the ordered node ids the slice came from) is NOT stored on the PRCS, so you cannot reconstruct which nodes in `subgraph` lay on the flow vs. which are neighborhood context.",
+      "Weak labeler purpose detection is a simple str.startswith on class names against configs/sdk_catalog.yaml lists (advertisement / analytics); obfuscated or shaded SDKs will be missed silently, and there is no coverage metric on how many PRCS get the default 'Functionality' purpose because no SDK matched.",
+      "weak_labels.yaml embeds a `splits:` block that build_dataset reads via load_yaml, but build_dataset also accepts a --config path \u00e2\u20ac\u201d coupling split policy to the weak-label rules file is surprising and undocumented in the README.",
+      "_grouped_splits has fragile rounding for tiny group counts: with 2 groups, n_val=1 forces train/val but leaves test empty then rescues by popping from val/train \u00e2\u20ac\u201d behaviour only exercised implicitly by the 8-app fixture; no unit test covers 1/2/3-group edge cases.",
+      "build_dataset writes one JSON per PRCS into codr_export/ with no pagination or manifest; on the 10,721-PRCS corpus this produces 10k+ small files, mirroring the same shape as data/prcs/ (see next item).",
+      "Overlap: data/prcs/*.json (from step2_prcs) and data/dataset/codr_export/*.json (from step2_dataset) both hold per-PRCS JSON with subgraph+snippet \u00e2\u20ac\u201d the second is nearly a re-serialisation of the first with labels attached; adppg.jsonl already contains the same content, so codr_export/ is largely redundant unless Codr genuinely requires one-file-per-record.",
+      "Human-label override in build_dataset silently ignores any label not present in PRACTICE_LABELS/PURPOSE_LABELS (list-comprehension filter) with no warning \u00e2\u20ac\u201d a typo like 'Sharing ' or 'analytics' is dropped without notice.",
+      "make_annotation_sheet truncates snippets to 300 chars with a naive newline->space replace; annotators lose multi-line control flow that a PRCS snippet is specifically designed to show.",
+      "No tests cover the MAX_SUBGRAPH_NODES cap, the CONTEXT_HOPS behaviour, or a PRCS with zero privacy overlay nodes; the extractor's boundedness/robustness on real APK graphs is untested (only the 12-path synthetic ppg_builder fixture is exercised).",
+      "No docstring or README section documents the exact PRCS JSON contract or the ADPPG record contract; contributors must read the @dataclass and _codr_record() to learn the schema."
+    ],
+    "duplicates_or_overlaps": [
+      "step2_prcs writes data/prcs/prcs_<id>.json AND step2_dataset writes data/dataset/codr_export/prcs_<id>.json \u00e2\u20ac\u201d both are per-record JSON containing subgraph+snippet+metadata; the Codr export just adds `candidate_labels`, `label_status`, and a `provenance` block. The same payload also lives inside data/dataset/adppg.jsonl. That is three co-existing serialisations of each PRCS.",
+      "Metadata is duplicated across the extractor's INDEX_COLUMNS (prcs_index.csv) and the dataset's labels.csv (which repeats prcs_id + app_package alongside multi-hot label columns); no join key documented \u00e2\u20ac\u201d consumers must know both files share prcs_id.",
+      "pipeline/run_pipeline.py uses the file-based extract_prcs() while pipeline/run_corpus.py uses the in-memory extract_from_graph() to avoid persisting full PPG pickles per APK \u00e2\u20ac\u201d two divergent invocation paths for the same subsystem, kept in sync only by convention.",
+      "No overlap with other subsystems noticed \u00e2\u20ac\u201d step2_convgnn strictly consumes adppg.jsonl + splits.json downstream; step3_caption/step3_policy consume the PRCS record shape but do not re-implement extraction."
+    ],
+    "canonical_vs_experimental_notes": "CANONICAL and actively used. Both modules are wired into the end-to-end drivers pipeline/run_pipeline.py and pipeline/run_corpus.py, are the sole producers of the artefacts (adppg.jsonl, splits.json, labels.csv, prcs_*.json) that step2_convgnn/data.py consumes, and are covered by 3 dedicated test files (test_step2_prcs.py, test_step2_dataset.py, test_g1_annotation.py) that are part of the 69-test green suite noted in the README/status. The G1 annotation loop (make_annotation_sheet \u00e2\u2020\u2019 ingest_annotations \u00e2\u2020\u2019 build_dataset --human-labels) is the documented path in docs/handoffs/HANDOFF_G1.md for replacing WEAK labels with human ones. Nothing here is legacy or duplicated across other subsystems \u00e2\u20ac\u201d the redundancy is internal (three per-PRCS serialisations and two extractor entry points), not competing implementations."
+  },
+  {
+    "module_name": "step2_convgnn",
+    "responsibility": "Turns each ADPPG PRCS subgraph (source\u00e2\u2020\u2019sink slice of the Privacy Property Graph) into a PyTorch-Geometric `Data` object, encodes it with a relation-aware Graph Convolutional Network (RGCN), and predicts two independent multi-label PAcT heads \u00e2\u20ac\u201d Practice (Processing/Collecting/Sharing/Other) and Purpose (Functionality/Advertisement/Analytics/Other). Also owns the training loop (early stopping on val macro-F1, pos_weight-balanced BCEWithLogits, best.pt checkpoint), the multi-label metrics helper, and the FULL-PPG-vs-APG-only ablation driver.",
+    "key_files": [
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_convgnn/__init__.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_convgnn/data.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_convgnn/model.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_convgnn/train.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_convgnn/metrics.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/step2_convgnn/ablation.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/convgnn.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step2_convgnn.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_ablation.py"
+    ],
+    "entry_points": [
+      "python -m step2_convgnn.train --config configs/convgnn.yaml --dataset data/dataset --out data/convgnn --epochs N",
+      "python -m step2_convgnn.ablation --config configs/convgnn.yaml --dataset data/dataset --out data/ablation",
+      "step2_convgnn.train.train(config, dataset_dir, out_dir, epochs, privacy_features, token_features) \u00e2\u20ac\u201d Python API used by pipeline/run_pipeline.py:77 and pipeline/run_corpus.py:85",
+      "step2_convgnn.ablation.run_ablation(config, dataset_dir, out_dir, epochs) \u00e2\u20ac\u201d Python API",
+      "step2_convgnn.data.load_splits(dataset_dir, privacy_features, token_features) and step2_convgnn.model.ConvGNNClassifier(cfg) \u00e2\u20ac\u201d imported by step4_eval/evaluate.py for held-out re-evaluation"
+    ],
+    "external_deps": [
+      "torch",
+      "torch_geometric (RGCNConv, AttentionalAggregation, global_mean_pool, DataLoader)",
+      "numpy",
+      "scikit-learn (sklearn.metrics.f1_score, precision_recall_fscore_support)",
+      "pplib.schema (PPG_NODE_LABELS, PPG_EDGE_TYPES, PRACTICE_LABELS, PURPOSE_LABELS, BANNER_BOOTSTRAP)",
+      "pplib.io_utils (load_yaml, ensure_dir, dump_json, get_logger)"
+    ],
+    "status": "canonical",
+    "research_role": "STEP 2 \u00c2\u00b7 Learning \u00e2\u20ac\u201d the classifier stage of the APK \u00e2\u2020\u2019 APG \u00e2\u2020\u2019 PPG \u00e2\u2020\u2019 PRCS \u00e2\u2020\u2019 PAcT \u00e2\u2020\u2019 Model \u00e2\u2020\u2019 Caption pipeline. Consumes the ADPPG dataset produced by step2_prcs + step2_dataset (PRCS subgraphs plus multi-label Practice/Purpose labels) and produces a trained RGCN checkpoint (best.pt) whose per-flow predictions are the semantic input to step3_caption/step3_policy and are re-scored by step4_eval. This is the module that operationalizes the paper's core claim that a relation-aware GNN over a privacy-augmented graph beats linear code-path baselines.",
+    "canonical_vs_experimental_notes": "Canonical: `data.py`, `model.py`, `train.py`, `metrics.py` are wired into `pipeline/run_pipeline.py`, `pipeline/run_corpus.py`, and `step4_eval/evaluate.py`; covered by tests in `tests/test_step2_convgnn.py`; results reported in `docs/RESULTS.md`. Experimental hooks that live inside the canonical files: (a) `TOKEN_HOOK_DIM=8` reserved feature slots in `data.py` filled by a hashing-trick token encoder \u00e2\u20ac\u201d commit f73d177 documents this as an honest-negative result at bootstrap scale, so it stays wired but off by default; (b) the `readout: mean` alternative in `model.py` (default is attentional aggregation). `ablation.py` is a canonical research script \u00e2\u20ac\u201d not part of the pipeline run, but the only place the PPG-vs-APG comparison is produced.",
+    "duplicates_or_overlaps": [
+      "`step4_eval/evaluate.py` reaches into `step2_convgnn.train._predict` (a leading-underscore private helper) and re-instantiates the model and data loaders to score a held-out app \u00e2\u20ac\u201d a soft boundary leak that duplicates a small amount of predict/threshold logic across the two modules.",
+      "Two callers each hardcode the config path `configs/convgnn.yaml` when invoking `train()` (pipeline/run_pipeline.py:78 and pipeline/run_corpus.py) instead of routing a shared setting; not a duplicate module, but duplicated defaults.",
+      "No overlap with any other GNN implementation in the repo \u00e2\u20ac\u201d step2_convgnn is the sole classifier subsystem."
+    ],
+    "gaps_or_issues": [
+      "Only two ablation conditions are implemented (FULL PPG vs APG-only). There is no code-only third arm inside this module \u00e2\u20ac\u201d the Code2Seq baseline referenced in README lives in step3_caption, so a true PPG-vs-APG-vs-code-only classification comparison cannot be produced from step2_convgnn alone.",
+      "Device is hardcoded to `torch.device('cpu')` in train.py:82; the config exposes no `device` field and CUDA is never selected even when available.",
+      "Prediction threshold is hardcoded to `sigmoid > 0.5` in `_predict` (train.py:59-60); no per-label threshold tuning or calibration on val \u00e2\u20ac\u201d a real gap for imbalanced PAcT labels despite pos_weight training.",
+      "The reserved statement-token encoder in `data.py` (`_tokens`, `_stable_hash`, `TOKEN_HOOK_DIM`) uses an unlearned MD5 hashing trick with only 8 buckets \u00e2\u20ac\u201d commit history calls this out as a negative result; the hook remains but there is no learned token embedding path.",
+      "`configs/convgnn.yaml` does not expose the `token_features` key even though `train.py` reads `tc.get('token_features', False)` \u00e2\u20ac\u201d the toggle is CLI-invisible and only reachable via the Python API.",
+      "Single-seed training and single-run ablation: `run_ablation` compares one FULL run to one APG-only run with no seed variance, confidence interval, or repeated-trials aggregation, so the reported delta has no statistical envelope.",
+      "BOOTSTRAP banner uses `any(getattr(g,'label_source','weak')=='weak' ...)` (train.py:94) \u00e2\u20ac\u201d a single weak graph in a mixed test set trips the banner; correct as a safety net but hides partial ground-truth mixes.",
+      "`AttentionalAggregation`'s gate is a bare `nn.Linear(hid, 1)` with no activation \u00e2\u20ac\u201d fine but undocumented; readout choice is not logged into metrics.csv, so runs are not self-describing after the fact.",
+      "No integration test that exercises the pipeline path `pipeline/run_pipeline.py` \u00e2\u2020\u2019 `step2_convgnn.train`; the two unit tests skip cleanly when torch/PyG are missing but do not verify the pipeline wiring.",
+      "`step2_convgnn/__init__.py` is a one-line docstring \u00e2\u20ac\u201d no public re-exports, so every consumer imports through submodule paths (works, but the module surface is undocumented)."
+    ]
+  },
+  {
+    "module_name": "Stage 3 \u00e2\u20ac\u201d Caption Generation & Policy Assembly (step3_caption + step3_policy)",
+    "responsibility": "Turns each labeled PRCS (Privacy-Relevant Code Segment) into (a) a short, human-facing 4-5 line privacy caption and (b) a per-app privacy Notice + Policy pair with GDPR/CCPA obligation mapping. `step3_caption` runs the pluggable LLM captioner plus a Code2Seq-style baseline; `step3_policy` aggregates captions + PRCS facts per app_package into rendered notice.md, policy.md, and structured policy.json. Weak-labeled inputs propagate a DRAFT banner end-to-end.",
+    "key_files": [
+      "step3_caption/generate.py",
+      "step3_caption/llm_interface.py",
+      "step3_caption/code2seq_baseline.py",
+      "step3_caption/__init__.py",
+      "step3_policy/assemble.py",
+      "step3_policy/__init__.py",
+      "configs/llm.yaml",
+      "configs/gdpr_ccpa_map.yaml",
+      "tests/test_step3_caption.py",
+      "tests/test_step3_policy.py"
+    ],
+    "entry_points": [
+      "python -m step3_caption.generate --dataset data/dataset --out data/captions [--config configs/llm.yaml] [--predictions <convgnn preds>] [--provider mock|anthropic|openai|llama|deepseek] [--per-app N] [--limit N]",
+      "python -m step3_policy.assemble --dataset data/dataset --captions data/captions --out data/policy [--map configs/gdpr_ccpa_map.yaml]",
+      "Programmatic: step3_caption.generate.generate_captions(...) and step3_policy.assemble.assemble(...) \u00e2\u20ac\u201d called from pipeline/run_pipeline.py:86-89 and pipeline/run_corpus.py:92-93"
+    ],
+    "external_deps": [
+      "pandas (CSV export in generate.py)",
+      "PyYAML (via pplib.io_utils.load_yaml for configs/llm.yaml and configs/gdpr_ccpa_map.yaml)",
+      "pplib.io_utils (dump_json, ensure_dir, get_logger, load_json, load_yaml, load_dotenv)",
+      "pplib.schema.BANNER_WEAK (defined pplib/schema.py:45)",
+      "anthropic SDK \u00e2\u20ac\u201d lazy imported only when provider=anthropic (llm_interface.py:90)",
+      "openai SDK \u00e2\u20ac\u201d lazy imported for provider in {openai, llama, deepseek} using OpenAI-compatible chat API with optional base_url (llm_interface.py:98-104)",
+      "Env vars: ANTHROPIC_API_KEY / OPENAI_API_KEY / LLAMA_API_KEY(+LLAMA_BASE_URL) / DEEPSEEK_API_KEY(+DEEPSEEK_BASE_URL); .env loaded via load_dotenv() only for non-mock providers"
+    ],
+    "status": "canonical",
+    "research_role": "Realizes the final two nodes of the pipeline chain APK -> APG -> PPG -> PRCS -> PAcT -> Model -> **Caption** (and downstream Policy assembly). It consumes PRCS records from data/dataset/adppg.jsonl (produced by Stage 2 / stage4_ppg) plus optional ConvGNN label predictions (--predictions overlays model outputs onto rec['labels'] in generate.py:97-98), and emits the user-facing artefacts the G2/G3 evaluations grade. step3_policy is the direct downstream consumer, and step4_eval/caption_judge.py plus tests/test_caption_judge.py grade its output \u00e2\u20ac\u201d so Stage 3 is the pipeline's I/O boundary between structured privacy facts and human-readable text.",
+    "gaps_or_issues": [
+      "Code2Seq baseline is explicitly a PLACEHOLDER \u00e2\u20ac\u201d BASELINE_TAG='code2seq-baseline (untrained placeholder)' in code2seq_baseline.py:16; there is no trained encoder/decoder, just a regex over 'source_api'/'sink_api' method tokens (_short, _terminals). It cannot honestly represent prior work in G3 until real paired code-path -> caption data (blocked on G1 human annotations) exists.",
+      "No test coverage for the real-provider code path \u00e2\u20ac\u201d _ApiProvider.generate is marked '# pragma: no cover (needs network/key)' (llm_interface.py:88); anthropic/openai/llama/deepseek branches are never exercised, so a regression in the anthropic vs openai-compatible branch would ship silently.",
+      "Evidence-grounding is enforced only for the MockProvider (deterministic template that lexically injects pi/sink/purpose from the evidence dict; test asserts substrings \u00e2\u20ac\u201d test_step3_caption.py:19-21). For real LLMs the evidence dict is only passed as prompt text via build_prompt() (generate.py:29-44); there is no post-hoc verifier that checks the returned caption actually mentions the PI / sink / purpose, so hallucinated captions from anthropic/openai are not caught. step4_eval/caption_judge.py is the closest thing but is a separate stage.",
+      "Intermediate representation is loose: the 'structured' evidence is an untyped Dict built inline by _evidence() (generate.py:47-56) \u00e2\u20ac\u201d no dataclass / Pydantic schema, no validation that required fields (pi_type/category, practice, purpose, sink_type) are present. The same shape is re-derived in _app_section_data / _collect_requirements in assemble.py:35-58, so the two modules share an implicit contract with no single source of truth.",
+      "Error handling in generate.py:102-106 wraps provider exceptions but uses `raise ... from None`, which swallows the original traceback \u00e2\u20ac\u201d makes debugging real-provider failures harder than needed.",
+      "ICL prompt (build_prompt) uses fields the evidence dict may not always populate (source_api, sink_api can be empty strings from _evidence defaults), and the prompt template does not include the LINDDUN privacy_threat field even though the mock adds it and evidence carries it.",
+      "generate.py:107 defaults `label_source` to 'weak' when the labels dict has no 'label_source' key \u00e2\u20ac\u201d that's silently reclassifying anything unlabeled as weak, which will incorrectly banner records that were actually strong-labeled but missing the field.",
+      "No JSON schema / test for the captions.json output shape, and captions.csv strips newlines from the caption (generate.py:118-119) but keeps them in captions.json \u00e2\u20ac\u201d downstream consumers must know which form to load.",
+      "step3_policy/assemble.py:117 assumes every caption record contains 'caption' with a str; there is no guard if a provider returned empty. It also uses `pkg.replace('/', '_')` for directory naming but does not sanitize other unsafe path chars (':', '\\\\'), which could matter for Windows app packages.",
+      "GDPR/CCPA mapping (_collect_requirements) has no test that validates the mapping YAML shape, and there is no fixture-level test that the assembled policy.md contains a specific mapped obligation string \u00e2\u20ac\u201d the existing test only checks 'GDPR'/'CCPA' substrings and non-empty lists.",
+      "Naming clash / potential confusion: the README lists a separate legacy 'Document Analysis Module/' at repo root as 'existing Stage 3 (API docs -> personal_info_results.csv) \u00e2\u20ac\u201d untouched' (README.md:187). The number '3' is reused: the new numbered pipeline's Step 3 (this subsystem) does captioning, not API-doc scraping. Newcomers grepping for 'Stage 3' will hit both.",
+      "No provider abstraction test for the OpenAI-compatible branch's response shape \u00e2\u20ac\u201d a change from choices[0].message.content to a different field on llama/deepseek endpoints would break at runtime only."
+    ],
+    "canonical_vs_experimental_notes": "Both step3_caption and step3_policy are CANONICAL: they are imported by both pipeline entry points (pipeline/run_pipeline.py and pipeline/run_corpus.py), covered by dedicated integration tests (tests/test_step3_caption.py, tests/test_step3_policy.py), and their outputs feed step4_eval (caption_judge) and step4_app. The MockProvider is the default (configs/llm.yaml sets `provider: mock`) so the pipeline runs offline in CI, while anthropic/openai/llama/deepseek providers are declared behind a factory but never exercised in tests \u00e2\u20ac\u201d they are production-optional, not experimental scaffolding. The Code2SeqBaseline is CANONICAL as an interface (always emitted alongside every caption, tagged in output records) but its implementation is an untrained placeholder pending G1 annotations; it is honestly labeled as such via BASELINE_TAG so downstream comparisons don't mistake it for a trained model.",
+    "duplicates_or_overlaps": [
+      "The evidence-dict shape is constructed twice with slightly different keys: step3_caption/generate.py::_evidence(rec) and step3_policy/assemble.py::_app_section_data / the per-fact dict built in assemble() (assemble.py:103-109). Both read rec.get('pi_category'), rec.get('sink_type'), labels['practice'/'purpose'], etc., but neither shares a schema \u00e2\u20ac\u201d a change to PRCS field names must be made in both.",
+      "Weak-label banner logic is duplicated: generate.py:107,113 (per-caption `label_source` + weak_banner field) and assemble.py:114,120 (per-app `weak` flag + DRAFT banner text). Both use pplib.schema.BANNER_WEAK but decide independently how to render it.",
+      "Overlap with step4_eval/caption_judge.py: caption_judge grades captions post-hoc for grounding/quality; some of that grounding responsibility could arguably live in step3_caption as a verifier around the real LLM output \u00e2\u20ac\u201d currently it is done only downstream in Stage 4.",
+      "The 'Document Analysis Module/' at repo root shares the 'Stage 3' label in the older README nomenclature (per README.md:187) but does something entirely different (API docs -> personal_info_results.csv). It is not imported by any pipeline file \u00e2\u20ac\u201d pure legacy sibling, no code duplication with step3_caption/step3_policy, only a naming overlap in prose."
+    ]
+  },
+  {
+    "module_name": "Evaluation harness (Stage 4): step4_eval + step4_userstudy + step4_app",
+    "responsibility": "The tail of the pipeline. Scores the model + caption + policy outputs and stages the human evaluation. Three complementary sub-modules: (1) step4_eval \u00e2\u20ac\u201d automated metrics: multilabel Practice/Purpose classification via the trained ConvGNN, caption quality vs human refs (BLEU-4 + ROUGE-L, self-implemented), policy structural completeness, plus a separate LLM-as-judge harness (caption_judge.py) that scores accuracy + readability and runs a blind pairwise A/B between the PPG-informed LLM caption and the Code2Seq baseline. (2) step4_userstudy \u00e2\u20ac\u201d the developer user-study instrument (blind A/B tasks, protocol.md, IRB consent template) and the ratings-ingestion aggregator; produces materials, not results, until humans return sheets. (3) step4_app \u00e2\u20ac\u201d Stage 8 Privacy Nutrition Facts: per-app privacy label + transparent heuristic risk indicator, plus a stdlib-only static HTML viewer (index + per-package pages) that also renders the Neo4j app_ppg_overlay Cypher.",
+    "key_files": [
+      "step4_eval/text_metrics.py",
+      "step4_eval/evaluate.py",
+      "step4_eval/caption_judge.py",
+      "step4_eval/__init__.py",
+      "step4_userstudy/build_study.py",
+      "step4_userstudy/ingest_ratings.py",
+      "step4_userstudy/protocol.md",
+      "step4_userstudy/consent_template.md",
+      "step4_userstudy/__init__.py",
+      "step4_app/nutrition.py",
+      "step4_app/build_app.py",
+      "step4_app/__init__.py",
+      "tests/test_step4_eval.py",
+      "tests/test_caption_judge.py",
+      "tests/test_step4_userstudy.py",
+      "tests/test_step4_app.py"
+    ],
+    "status": "canonical",
+    "research_role": "STEP 4 (final stage) in APK -> APG -> PPG -> PRCS -> PAcT -> Model -> Caption/Policy -> **Evaluation + Study + App**. Consumes upstream artifacts (data/dataset/adppg.jsonl, data/captions/captions.json, data/policy/policy.md+json, data/convgnn/best.pt) and produces (a) automated quality/compliance metrics (eval_report.json/md, caption_eval.json/md), (b) the human-eval scaffolding for gate G3 (study_tasks.json, study_packet.md, ratings_template.csv, protocol.md, consent_template.md; ingest_ratings.py aggregates returned sheets into study_metrics.json), and (c) the Stage 8 outward-facing artifact \u00e2\u20ac\u201d the Privacy Nutrition Facts static site (data/app/index.html + one page per package) that overlays the whole pipeline's findings for a lay user. step4_eval/evaluate.py, step4_userstudy/build_study.py, and step4_app/build_app.py are called back-to-back by pipeline/run_pipeline.py (steps 7-9); pipeline/run_corpus.py invokes only step4_eval/evaluate.py. Every automated number is banner-gated: `BANNER_BOOTSTRAP` fires whenever inputs are weak-labeled and `BANNER_JUDGE` (\"LLM-JUDGED \u00e2\u20ac\u201d not human ratings\") tags every LLM-judge output.",
+    "entry_points": [
+      "python -m step4_eval.evaluate --dataset data/dataset --captions data/captions --policy data/policy --checkpoint data/convgnn/best.pt [--references refs.json] [--reference-policy path.md]",
+      "python -m step4_eval.caption_judge --dataset ... --captions ... --out ... --provider {mock|openai|anthropic} [--limit N]",
+      "python -m step4_userstudy.build_study --dataset ... --captions ... --out ... --max-items 20",
+      "python -m step4_userstudy.ingest_ratings --ratings <csv-or-dir> --out ...",
+      "python -m step4_app.nutrition --dataset ... --captions ... --out data/nutrition",
+      "python -m step4_app.build_app --dataset ... --captions ... --out data/app  (produces browsable index.html \u00e2\u20ac\u201d no HTTP server; open in browser)",
+      "Programmatic: step4_eval.evaluate.run(), step4_eval.caption_judge.judge_captions(), step4_userstudy.build_study.build_study(), step4_userstudy.ingest_ratings.ingest(), step4_app.nutrition.build_nutrition(), step4_app.build_app.build_app() \u00e2\u20ac\u201d all invoked as library calls from pipeline/run_pipeline.py steps 7-9 and pipeline/run_corpus.py"
+    ],
+    "external_deps": [
+      "Python standard library only for text_metrics.py, build_study.py, ingest_ratings.py, nutrition.py, build_app.py (csv, json, math, statistics, glob, html, argparse, collections, re, pathlib) \u00e2\u20ac\u201d deliberately zero heavy deps",
+      "Internal: pplib.io_utils (dump_json, ensure_dir, get_logger, load_json, load_yaml, load_dotenv), pplib.schema (BANNER_BOOTSTRAP, PRACTICE_LABELS, PURPOSE_LABELS)",
+      "Internal cross-module: step3_caption.llm_interface.get_provider (only when caption_judge --provider != mock); stage4_ppg.cypher_runner.load_library (only in step4_app/build_app.py, for the Neo4j overlay Cypher panel)",
+      "Optional heavy: torch + torch_geometric + step2_convgnn.{data,model,train,metrics} \u00e2\u20ac\u201d imported lazily inside evaluate_classification(); a missing torch returns status='skipped', not an error",
+      "Optional network: an OpenAI or Anthropic SDK is required only when caption_judge.py is invoked with a real provider (loaded via step3_caption.llm_interface); default provider=mock is fully offline and deterministic",
+      "No BLEU/ROUGE/BERTScore libraries \u00e2\u20ac\u201d BLEU-4 (smoothed, best-ref) and ROUGE-L (LCS, best-ref F1) are implemented from scratch in text_metrics.py"
+    ],
+    "duplicates_or_overlaps": [
+      "step4_eval/evaluate.py::evaluate_captions and step4_eval/caption_judge.py both score captions but use different mechanisms and neither replaces the other: evaluate_captions computes BLEU-4/ROUGE-L when human refs exist (else emits a rating sheet), caption_judge scores accuracy+readability via an LLM (or offline heuristic) and adds a blind pairwise A/B. They are complementary, but caption_judge is NOT wired into run_pipeline/run_corpus \u00e2\u20ac\u201d only evaluate.py runs automatically. Human-eval-facing rating CSVs are produced by both evaluate.evaluate_captions (caption_rating_sheet.csv, 1-caption-per-row for solo grading) and step4_userstudy.build_study (ratings_template.csv, blind A/B per task) \u00e2\u20ac\u201d different instruments, but the schemas overlap (accuracy_1_5 / clarity_1_5 / completeness_1_5) and there is no shared definition module.",
+      "step4_app/nutrition.py aggregates per-app fact counts (data_collected, data_shared_offdevice, purposes, practices, third_parties) that duplicate some counting already done downstream in step3_policy.assemble (compliance sections). The two live side by side: nutrition.py is a lay-user transparency label with a heuristic risk score; step3_policy is GDPR/CCPA obligation coverage. Distinct outputs but shared upstream reads and no shared aggregation helper.",
+      "step4_userstudy/ingest_ratings.py 'mean pairwise |\u00ce\u201d| on accuracy' is an ad-hoc inter-rater agreement number that overlaps with \u00e2\u20ac\u201d but does not compute \u00e2\u20ac\u201d the Krippendorff's \u00ce\u00b1 promised in step4_userstudy/protocol.md."
+    ],
+    "gaps_or_issues": [
+      "Caption metric coverage is limited: only BLEU-4 (smoothed) and ROUGE-L are implemented \u00e2\u20ac\u201d no BERTScore, no METEOR, no chrF, no semantic-similarity metric. text_metrics.py's docstring correctly warns these are meaningful only against real refs, but the repo currently has NO human reference captions on disk, so BLEU/ROUGE never actually run in the default pipeline (evaluate_captions returns 'no references' and emits caption_rating_sheet.csv).",
+      "caption_judge.py is not invoked by pipeline/run_pipeline.py or pipeline/run_corpus.py; the preliminary G2-caption numbers cited in docs/RESULTS.md require a human to run `python -m step4_eval.caption_judge --provider openai` separately. Easy for it to drift from the main pipeline's outputs.",
+      "No pytest coverage for the real-LLM code paths in caption_judge (both _llm_score and _llm_pairwise carry `# pragma: no cover (needs key)`) \u00e2\u20ac\u201d the prompt string and JSON contract can regress silently.",
+      "No pytest coverage for the --reference-policy branch of evaluate_compliance (line 111-116 in evaluate.py); the 'crude coverage vs a reference policy' fraction is untested.",
+      "step4_userstudy/ingest_ratings.py does NOT compute the Wilcoxon signed-rank or McNemar tests promised in protocol.md, nor Krippendorff's \u00ce\u00b1 \u00e2\u20ac\u201d it produces per-condition means, would_include_rate, and a pairwise |\u00ce\u201d| proxy. A real inferential-stats module (scipy.stats-based) is missing.",
+      "No G3 human data ever collected \u00e2\u20ac\u201d this is a known human gate (marked in README/PROJECT.md), but the harness has never been exercised end-to-end against real returned sheets; the sole ingest test uses a synthetic completed sheet fabricated inside the test.",
+      "text_metrics.sentence_bleu uses a `best-matching reference` (max-precision-per-ngram over union of refs, then closest-length ref for brevity penalty) which differs from standard corpus BLEU and even from NLTK sentence_bleu \u00e2\u20ac\u201d a defensible simplification for a stdlib impl, but not documented as a limitation.",
+      "step4_app/build_app.py is a stdlib-only static generator (no server, no JS bundler): it produces a browsable index.html + one page per package, but there is no filtering, sorting UI, or per-page interactivity beyond navigation. The Neo4j overlay Cypher is rendered as text for the user to paste \u00e2\u20ac\u201d no direct query execution.",
+      "step4_app/nutrition.py's `_risk` heuristic (network egress +25, identifier +20, sensitive-category +10 each up to +30, Advertisement +15, Analytics +10, cap 100) is transparent and unit-tested for monotonicity but has no calibration against ground truth \u00e2\u20ac\u201d the code correctly labels it 'not a security audit', but any downstream consumer treating it as a score risks over-interpreting it.",
+      "No dedicated docs/ page for step4_eval / step4_userstudy / step4_app beyond a paragraph in docs/PROJECT.md \u00c2\u00a7\u00c2\u00a777-78 and 136-138 \u00e2\u20ac\u201d the caption_judge banner semantics, the difference between the two rating-sheet formats, and the ingest_ratings vs protocol.md gap are not explained anywhere central."
+    ],
+    "canonical_vs_experimental_notes": "CANONICAL. All three sub-packages are live and integrated into the default pipeline: pipeline/run_pipeline.py imports and calls step4_eval.evaluate.run (step 7), step4_userstudy.build_study.build_study (step 8), and step4_app.build_app.build_app (step 9); pipeline/run_corpus.py calls step4_eval.evaluate.run. All modules are covered by tests (test_step4_eval.py: 7 tests, test_caption_judge.py: 5 tests, test_step4_userstudy.py: 2 tests, test_step4_app.py: 3 tests \u00e2\u20ac\u201d all in the 69-green suite advertised by the README). Every automated number in this subsystem is banner-gated (BANNER_BOOTSTRAP for weak-labeled inputs, BANNER_JUDGE for the LLM-as-judge scores) \u00e2\u20ac\u201d the \"no-fabrication rule\" the README highlights is enforced here more than anywhere else in the repo. Two notes: (a) step4_eval/caption_judge.py is canonical code but must be invoked manually \u00e2\u20ac\u201d it is NOT wired into run_pipeline/run_corpus, so the G2 caption-quality numbers cited in docs/RESULTS.md come from an out-of-band run; (b) the \"results\" side of step4_userstudy is scaffolding only \u00e2\u20ac\u201d the instrument, protocol, consent form, and ingestion script are all built and tested, but no human ratings have been collected (G3 gate open, marked as such in README)."
+  },
+  {
+    "module_name": "Pipeline Orchestration & CLI Entry Points (pipeline/, run_g1g2.py, tools/)",
+    "responsibility": "Thin top-level drivers that chain the per-stage Python modules (stage4_ppg, step2_prcs, step2_dataset, step2_convgnn, step3_caption, step3_policy, step4_eval, step4_userstudy, step4_app, adapters) into an end-to-end run and expose it as reproducible one-command CLIs. Handles two orchestration modes (single APK/APG vs multi-APK corpus), a G1->G2 human-label retrain loop, and a helper that applies LLM-generated annotations onto the annotation sheets consumed by that loop.",
+    "key_files": [
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pipeline/__init__.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pipeline/run_pipeline.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pipeline/run_corpus.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/run_g1g2.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tools/apply_annotations.py",
+      "c:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_pipeline_e2e.py"
+    ],
+    "status": "canonical",
+    "research_role": "Cross-cuts the entire APK -> APG -> PPG -> PRCS -> ADPPG (PAcT labels) -> ConvGNN -> Caption -> Policy -> Eval -> User-study -> Nutrition-Facts app chain. pipeline/run_pipeline.py is the canonical single-app driver (optionally starting from an APK via adapters.run_apg_csv); pipeline/run_corpus.py scales this to a multi-APK corpus, processing each APK in-memory to a shared prcs_all/ pool then building one grouped-by-app ADPPG dataset for leakage-free ConvGNN training; run_g1g2.py is the human-label retrain loop (ingest_annotations -> build_dataset with human_labels.json -> convgnn.train, prints whether the BOOTSTRAP banner cleared); tools/apply_annotations.py bridges the LLM two-pass labeling workflow into the same human_labels.json + annotation_sheet.csv format run_g1g2.py consumes.",
+    "gaps_or_issues": [
+      "Only one test file (tests/test_pipeline_e2e.py) covers this subsystem, with two tests: a synthetic-APG smoke of run_pipeline (epochs=3) and a run_corpus aggregation on the same fixture used as a single APG dir. Neither the --apk path (adapters.run_apg_csv branch), the --precision derived-config branch (_precision_config), nor the multi-APK-directory branch of run_corpus is exercised.",
+      "run_g1g2.py and tools/apply_annotations.py have no unit or smoke tests despite being the G1->G2 gate drivers.",
+      "tools/ contains only apply_annotations.py \u00e2\u20ac\u201d the directory name suggests a broader utility bucket but is effectively a single-file bridge to the LLM annotation workflow. The upstream files it consumes (data/_annot_rows.json, data/_merged_labels.json) are produced outside this repo and are neither documented nor validated here (missing/malformed inputs would raise at file-read time).",
+      "SHEETS in tools/apply_annotations.py is a hardcoded 2-entry dict ({'starter', 'eval'}) \u00e2\u20ac\u201d adding a new annotation batch requires editing source, not a CLI flag.",
+      "_precision_config is defined in pipeline/run_pipeline.py and imported by pipeline/run_corpus.py \u00e2\u20ac\u201d a private-underscore helper crossing module boundaries; either promote it to pplib or duplicate is fine, current arrangement is a minor smell.",
+      "run_pipeline swallows ConvGNN failures with a broad `except Exception` and logs a warning so downstream stages (captions, policy, eval, study, app) keep running with checkpoint=None. Reasonable for 'torch/PyG missing' but hides real training bugs; no distinction between the two failure modes.",
+      "run_corpus catches per-APK failures with a broad `except Exception` and records {'error': str(e)} in per_app \u00e2\u20ac\u201d good for corpus resilience but means silent partial datasets if many APKs fail; no aggregate 'N of M succeeded' assertion or exit code.",
+      "run_g1g2.py hardcodes out_dir=<dataset-parent>/model and epochs default 30, while run_pipeline defaults epochs=40 and writes to <out>/convgnn \u00e2\u20ac\u201d two slightly divergent training-output layouts for what is conceptually the same trainer.",
+      "No dedicated docs/ page for pipeline orchestration; README.md is the only user-facing description. docs/PROJECT.md \u00c2\u00a78 is referenced from the README but this subsystem's contract (input dirs, output layout under out/, summary dict schema) is not written down anywhere authoritative.",
+      "Windows-only stdout.reconfigure(encoding='utf-8') hack lives in run_g1g2.py but not in run_pipeline.py or run_corpus.py, which also print status lines that could contain non-ASCII (e.g. the same BOOTSTRAP banner via summary['eval']).",
+      "The pipeline/__init__.py docstring is the only inline documentation of the run order at the package level; no CLI help text lists which stages are optional vs mandatory."
+    ],
+    "entry_points": [
+      "python -m pipeline.run_pipeline --apg <apg_dir> --out <run_dir>  (canonical single-run; fixture)",
+      "python -m pipeline.run_pipeline --apk <path.apk> --out <run_dir> [--precision] [--no-train] [--epochs N] [--neo4j]  (canonical single-run; real APK via adapters.run_apg_csv)",
+      "python -m pipeline.run_corpus --apks <dir_of_apks> --out <corpus_run> [--precision] [--no-train] [--epochs N]  (multi-APK -> one ADPPG)",
+      "python -m pipeline.run_corpus --apg-dirs 'd1,d2' --out <corpus_run>  (multi pre-built APG dirs)",
+      "python run_g1g2.py [--base data/starter|data/corpus_run] [--sheet ...] [--test-app APP] [--test-cap N] [--epochs 30]  (G1 human-label loop)",
+      "python tools/apply_annotations.py  (no flags; consumes data/_annot_rows.json + data/_merged_labels.json, writes annotation_sheet.csv + human_labels.json + _review_shortlist.{csv,md})",
+      "Programmatic: pipeline.run_pipeline.run_pipeline(out_dir, apg_dir|apk, ...) and pipeline.run_corpus.run_corpus(out_dir, apks_dir|apg_dirs, ...) return a summary dict"
+    ],
+    "external_deps": [
+      "yaml (PyYAML) \u00e2\u20ac\u201d only run_pipeline._precision_config writes a derived ppg.precision.yaml",
+      "argparse, pathlib, json, csv, glob, gc, dataclasses (stdlib)",
+      "internal: pplib.io_utils (ensure_dir, get_logger, load_yaml, dump_json), pplib.apg_model (APG, load_apg), stage4_ppg.build_ppg (build_ppg + PPGBuilder), step2_prcs.extract_prcs (extract_prcs, extract_from_graph), step2_dataset.build_dataset, step2_dataset.ingest_annotations, step3_caption.generate, step3_policy.assemble, step4_eval.evaluate, step4_userstudy.build_study, step4_app.build_app, step2_convgnn.train (lazy-imported, optional), adapters.run_apg_csv (lazy-imported, optional)",
+      "Configs consumed: configs/ppg.yaml, configs/convgnn.yaml, configs/llm.yaml (all default paths)"
+    ],
+    "duplicates_or_overlaps": [
+      "pipeline/run_corpus.py inlines an APG->PPG->PRCS mini-pipeline (PPGBuilder + extract_from_graph) instead of reusing pipeline/run_pipeline.run_pipeline per app. Intentional (keeps only PRCS JSONs on disk to fit real-APK memory budgets, then aggregates into one dataset) \u00e2\u20ac\u201d documented in its docstring \u00e2\u20ac\u201d but it is a parallel code path that must stay in sync with the single-run driver.",
+      "pipeline/run_corpus.py imports _precision_config from pipeline/run_pipeline.py \u00e2\u20ac\u201d a shared private helper that arguably belongs in pplib/ or a pipeline/_config.py module rather than crossing a private boundary between two sibling drivers.",
+      "run_g1g2.py trains the ConvGNN via step2_convgnn.train.train, and pipeline/run_pipeline.py + pipeline/run_corpus.py also call the same function. Three call-sites with slightly different default epochs (30 vs 40) and different out_dir conventions (<base>/model vs <out>/convgnn). No single wrapper around 'train + report bootstrap banner'.",
+      "step2_convgnn/train.py, step4_app/build_app.py, step4_eval/caption_judge.py, stage4_ppg/build_ppg.py, stage4_ppg/cypher_runner.py, step2_convgnn/ablation.py, step3_caption/generate.py, step2_dataset/build_dataset.py, step2_dataset/make_annotation_sheet.py, step2_prcs/extract_prcs.py, adapters/run_apg_csv.py, step4_userstudy/build_study.py, step4_userstudy/ingest_ratings.py, step4_eval/evaluate.py, step3_policy/assemble.py, adapters/fetch_androzoo.py, adapters/fetch_fdroid.py, and step2_dataset/ingest_annotations.py all also expose their own `python -m ...` CLIs. The pipeline drivers are the intended single command, but every stage remains independently runnable \u00e2\u20ac\u201d no overlap in behavior, but the CLI surface is broad and not enumerated anywhere central."
+    ],
+    "canonical_vs_experimental_notes": "\"All four files (pipeline/run_pipeline.py, pipeline/run_corpus.py, run_g1g2.py, tools/apply_annotations.py) are actively used and referenced from the top-level README.md Quick-start section. tests/test_pipeline_e2e.py explicitly exercises both pipeline drivers on the synthetic APG fixture. run_pipeline is the canonical single-app driver used to produce the fixture-based smoke results; run_corpus is the canonical multi-APK driver that produced the 10,721-PRCS real-corpus figures cited in the README. run_g1g2 is the canonical human-label retrain loop, called out by name in the README quick-start. tools/apply_annotations.py is a support script for the G1 LLM-annotation workflow \u00e2\u20ac\u201d not part of automated CI but referenced by the docs/handoffs G1 handoff. Nothing in this subsystem is experimental, legacy, duplicate, broken, or empty; the __init__.py is a one-line package marker.\""
+  },
+  {
+    "module_name": "data corpus, Neo4j display layer, and configs",
+    "responsibility": "Holds all input/output artifacts of the pipeline (APK bytes, per-stage APG/PPG/PRCS/dataset/model/caption/policy/eval outputs) plus every editable YAML/Cypher/GraSS config that parametrizes the pipeline. Also carries the optional Neo4j display layer (loader + Cypher query library + browser styling) that renders one loaded PPG per app so a human can visually walk source->sink flows with `code` + `what_it_does` per node \u00e2\u20ac\u201d but Neo4j is explicitly a viewer, not the system of record.",
+    "key_files": [
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/DISPLAY.md",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/ppg.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/sinks.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/convgnn.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/llm.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/weak_labels.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/sdk_catalog.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/gdpr_ccpa_map.yaml",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/queries.cypher",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/configs/neo4j.grass",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/fixtures/make_synthetic_apg.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/fixtures/synthetic_apg/ (small: AST/MCG/ICFG/DDG _nodes/_edges CSVs)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/fixtures/synthetic_apg_large/ (larger fixture with the same 8 CSVs)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/corpus/ (2 F-Droid APKs: connectbot, fdroid)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/corpus_az/ (8 AndroZoo APKs, SHA256-named)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/androzoo/resolved.json + resolved_small.json + latest.csv.gz (AndroZoo index/resolutions)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/apg_fdroid/, data/apg_real/ (Stage 2 APG CSVs per source; data/apg/ is present-but-empty placeholder)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/ppg/ + data/ppg_large/ + data/ppg_real/ (PPG_nodes.csv, PPG_edges.csv, ppg.pkl, ppg.graphml, taint_paths.json \u00e2\u20ac\u201d the authoritative PPG artifacts)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/prcs/ (12 synthetic PRCS + prcs_index.csv), data/prcs_large/ (49 synthetic PRCS)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/corpus_run/prcs_all/ (10,721 REAL PRCS from 7 AndroZoo apps \u00e2\u20ac\u201d G4 corpus)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/corpus_run/ppg.precision.yaml (auto-generated by pipeline._precision_config, follow_icfg:false + max_paths_per_source:25)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/corpus_run/{app,app_llm,captions,captions_llm,policy,policy_llm,caption_eval,eval,convgnn,dataset}/ (real-corpus end-to-end outputs, mock vs LLM variants)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/dataset/ (adppg.jsonl, labels.csv weak-labeled synthetic, splits.json with empty test, codr_export/*.json)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/dataset_large/ (same shape, larger synthetic)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/starter/ (annotation_sheet.csv 42 rows + prcs/*.json 42 files + human_labels.json + dataset/ + model/) \u00e2\u20ac\u201d the G1 starter-annotation package",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/eval_run/ (annotation_sheet.csv 100 rows + human_labels.json + dataset/ + model/ + model_tokens/ + ablation/{apg_only,full,ablation.json,ablation.md}) \u00e2\u20ac\u201d the 100-flow TikTok G2 test",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/_annot_rows.json, data/_merged_labels.json, data/_review_shortlist.csv/.md (13-row LLM two-pass disagreement shortlist awaiting human check)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/run/ (default single-app pipeline output: apg/ ppg/ prcs/ dataset/ convgnn/ captions/ policy/ eval/ app/ userstudy/)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/captions_large/, data/policy_large/, data/eval_large/, data/convgnn_large/ (matching large-synthetic outputs)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/neo4j_loader.py (optional loader; only fires with --neo4j)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/stage4_ppg/cypher_runner.py (thin CLI over configs/queries.cypher)",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/.gitignore (data/* ignored except data/fixtures/**)"
+    ],
+    "status": "canonical",
+    "research_role": "Cross-cuts every stage of the APK -> APG -> PPG -> PRCS -> PAcT -> Model -> Caption pipeline. (a) `data/corpus/` and `data/corpus_az/` are the APK inputs; `data/androzoo/` holds AndroZoo resolution metadata. (b) `data/fixtures/` provides the deterministic synthetic APG that lets the whole pipeline + 69 tests run with no APK, no network, no keys. (c) `data/apg*/` -> `data/ppg*/` -> `data/prcs*/` -> `data/dataset*/` -> `data/convgnn*/` -> `data/captions*/` -> `data/policy*/` -> `data/eval*/` are the persisted stage outputs; `data/run/` and `data/corpus_run/` are the two blessed end-to-end output roots (single APK vs corpus). (d) `data/starter/` (42 rows) and `data/eval_run/` (100 rows) are the labeled annotation/eval packages used to close G1/G2. (e) The Neo4j display layer (`DISPLAY.md` + `configs/queries.cypher` + `configs/neo4j.grass` + `stage4_ppg/neo4j_loader.py`) is a **read-only viewer over the PPG**, not authoritative \u00e2\u20ac\u201d `DISPLAY.md` line 8 states the pipeline/PRCS/tests run fully without a database, and every PPG is also written as `PPG_nodes.csv` / `PPG_edges.csv` / `ppg.pkl` / `ppg.graphml`. (f) `configs/` supplies canonical parameters for every stage: sinks catalog, sources allowlist, taint + permission + LINDDUN maps (`ppg.yaml`, `sinks.yaml`), weak labeler + SDK catalog (`weak_labels.yaml`, `sdk_catalog.yaml`), RGCN hyperparams (`convgnn.yaml`), caption LLM provider + ICL examples (`llm.yaml`, default `mock`), regulatory obligation map (`gdpr_ccpa_map.yaml`).",
+    "entry_points": [
+      "DISPLAY.md walkthrough: (Neo4j Browser) `:style` + drag configs/neo4j.grass; then `python -m stage4_ppg.build_ppg --apg data/fixtures/synthetic_apg_large --out data/ppg --neo4j` to push a PPG in",
+      "`python -m stage4_ppg.cypher_runner --list` / `--show <name> --app-id ...` / `--run <name> --app-id ...` \u00e2\u20ac\u201d offline lint + live execution of the 11 named queries in configs/queries.cypher (app_apg, app_ppg_overlay, list_sources, list_sinks, flows_for_app, prcs_subgraph, taint_path_snippets, node_detail, app_summary, list_apps, clear_app)",
+      "`python data/fixtures/make_synthetic_apg.py --out data/fixtures/synthetic_apg_large --apps N [--merge]` \u00e2\u20ac\u201d regenerate the committed synthetic APG fixture",
+      "Configs are consumed (not run) by 26 files across the repo \u00e2\u20ac\u201d `configs/ppg.yaml` by stage4_ppg/build_ppg.py, `configs/convgnn.yaml` by step2_convgnn/train.py + ablation.py, `configs/llm.yaml` by step3_caption/generate.py + step4_eval/caption_judge.py, `configs/gdpr_ccpa_map.yaml` by step3_policy/assemble.py, `configs/weak_labels.yaml` + `configs/sdk_catalog.yaml` by step2_dataset/build_dataset.py, `configs/sinks.yaml` by taint logic in stage4_ppg",
+      "No HTTP server, no daemon; Neo4j is an external service the user runs themselves (defaults bolt://localhost:7687 / neo4j / password baked into stage4_ppg/neo4j_loader.py)"
+    ],
+    "external_deps": [
+      "neo4j (Python driver) \u00e2\u20ac\u201d OPTIONAL, only imported inside stage4_ppg/neo4j_loader.py when --neo4j is passed",
+      "Neo4j server itself \u00e2\u20ac\u201d user-provided (Desktop or Docker), never bundled",
+      "networkx, pandas, PyYAML \u00e2\u20ac\u201d used by fixture generator, config loaders, and CSV IO",
+      "The APK corpora themselves (data/corpus/, data/corpus_az/) are inputs consumed by androguard in the Stage 1 disassembly module, not by this subsystem directly",
+      "AndroZoo (external download service) \u00e2\u20ac\u201d configs referenced via adapters/fetch_androzoo (out of this subsystem); resolution artifacts live in data/androzoo/"
+    ],
+    "duplicates_or_overlaps": [
+      "Two parallel output roots for essentially the same schema: data/run/ (single-APK/fixture run) vs data/corpus_run/ (multi-APK corpus run) \u00e2\u20ac\u201d plus a family of *_large siblings (data/prcs_large, data/dataset_large, data/captions_large, data/policy_large, data/eval_large, data/convgnn_large, data/ppg_large) that repeat the same shape at larger synthetic scale. Boundary between 'canonical demo output' and 'ephemeral run' is unwritten.",
+      "Two APK sources: data/corpus/ (2 F-Droid APKs \u00e2\u20ac\u201d connectbot, fdroid) vs data/corpus_az/ (8 AndroZoo hash-named APKs). Both feed separate APG outputs (data/apg_fdroid/ vs data/apg_real/). data/apg/ itself is empty \u00e2\u20ac\u201d a stale placeholder that configs/ppg.yaml still names as `apg_dir`.",
+      "data/corpus_run/ppg.precision.yaml is written at runtime by pipeline.run_pipeline._precision_config and is a full copy of configs/ppg.yaml with `follow_icfg: false` and `max_paths_per_source: 25`. It is NOT a committed alternative config, but its presence next to real configs invites confusion.",
+      "data/dataset/ (12 rows, weak-labeled, empty test split) and data/dataset_large/ (49 rows) duplicate the same synthetic-fixture dataset at two sizes; both regenerable from data/fixtures/. Only data/dataset_large is targeted by the model docs.",
+      "data/starter/dataset|prcs|model and data/eval_run/dataset|model|model_tokens|ablation partially mirror each other \u00e2\u20ac\u201d each has its own labels.csv/splits.json/adppg.jsonl/best.pt. The train vs eval separation is intentional but the naming (starter / eval_run) is idiosyncratic and undocumented in this subsystem.",
+      "PRCS files exist under three roots \u00e2\u20ac\u201d data/prcs/ (12 synthetic), data/prcs_large/ (49 synthetic), data/corpus_run/prcs_all/ (10,721 real) \u00e2\u20ac\u201d plus per-run copies in data/starter/prcs/ (42) and data/dataset/codr_export/ (12). Consumers pick by convention, not by manifest.",
+      "Caption outputs come in mock and _llm variants side by side (data/corpus_run/captions/ vs captions_llm/, policy/ vs policy_llm/, app/ vs app_llm/); nothing in this subsystem records which run produced which."
+    ],
+    "gaps_or_issues": [
+      "Neo4j credentials are baked in as literals in stage4_ppg/neo4j_loader.py (bolt://localhost:7687 / neo4j / password). DISPLAY.md instructs users to override via `configs/ppg.yaml -> neo4j:`, but the committed configs/ppg.yaml has NO `neo4j:` section at all (grep across configs/ finds zero matches). First-time users following DISPLAY.md hit an undocumented gap.",
+      "configs/ppg.yaml still points `paths.apg_dir: data/apg`, but data/apg/ is empty on disk \u00e2\u20ac\u201d real runs write to data/apg_real/ or data/apg_fdroid/. The default config no longer matches the default corpus.",
+      "data/dataset/splits.json ships with `test: []` (the synthetic bootstrap has no test split). Consumers must know to switch to data/dataset_large/ or data/eval_run/ for real evaluation; nothing in the data root warns them.",
+      "All of data/ except data/fixtures/ is .gitignored, so every artifact listed here (data/corpus_run/, data/starter/, data/eval_run/, data/androzoo/resolved.json, all *_large trees, data/_review_shortlist.*) exists only on this checkout. There is no manifest or README under data/ describing what any subdir *should* contain, so a fresh clone shows only fixtures and the intent is opaque.",
+      "configs/queries.cypher `app_summary` query relies on `t.tainted = true OR t.tainted = 'True'` \u00e2\u20ac\u201d the OR-with-string branch shows the loader silently coerces booleans to strings during upsert (confirmed in stage4_ppg/neo4j_loader.py: `str(v) if not isinstance(v, (int, float, bool, str))` \u00e2\u20ac\u201d bools pass through, but property dicts elsewhere stringify). A schema note is missing.",
+      "No test appears to exercise the Neo4j loader end-to-end (grep on `neo4j` inside stage4_ppg hits only build_ppg.py + cypher_runner.py + neo4j_loader.py; no test file). Cypher queries are lint-only via `cypher_runner --show`; nothing validates them against a real DB in CI.",
+      "No schema validation for any YAML config \u00e2\u20ac\u201d malformed edits (missing keys, wrong types) fail deep inside the pipeline rather than at load time. `configs/ppg.yaml` mixes six unrelated concerns (paths, sources, known_sources allowlist, taint, permission_map, linddun_map, identifying_pi_categories) in one file with no header comment listing them.",
+      "data/starter/ and data/eval_run/ have separate human_labels.json but no README documenting which corpus each came from, how the 42-row starter vs 100-row eval were sampled, or what the join key to prcs/*.json is (only inferable from the annotation_sheet.csv `prcs_id` column).",
+      "data/_annot_rows.json / _merged_labels.json / _review_shortlist.csv/.md live at data/ root with an underscore-prefixed 'private' naming convention but no code reference explains their producer/consumer \u00e2\u20ac\u201d appears to be scratch output of the G1 LLM two-pass labeling loop (referenced only in README G1 status).",
+      "configs/llm.yaml pins Anthropic model `claude-sonnet-4-6` and OpenAI `gpt-4o`; the ANTHROPIC_API_KEY comment sits inside the config next to a note about switching to `claude-opus-4-8`. These strings drift silently \u00e2\u20ac\u201d no test verifies the provider spec is even parseable.",
+      "data/androzoo/latest.csv.gz is a large index kept in the tree (though gitignored). Nothing in this subsystem documents its refresh cadence or which columns downstream adapters consume."
+    ],
+    "canonical_vs_experimental_notes": "Everything in configs/ is CANONICAL \u00e2\u20ac\u201d each YAML/Cypher/GraSS file is referenced by at least one active pipeline module (grep shows 26 files touch these configs, spanning stage4_ppg, step2_dataset, step2_convgnn, step3_caption, step3_policy, step4_eval, step4_app, and both pipeline entry points). data/fixtures/ is CANONICAL: the only committed data (per .gitignore) and the fixture the 69-test suite runs against. data/corpus_run/ is CANONICAL for the G4 real-corpus run (10,721 PRCS from 7 apps \u00e2\u20ac\u201d the numbers cited in README and RESULTS.md come from here). data/starter/ and data/eval_run/ are CANONICAL annotation/eval packages driving the open G1/G2 gates. All other data/ subtrees (data/run/, data/*_large/, data/apg_real/, data/apg_fdroid/, data/ppg/, data/prcs/, data/dataset/, data/captions/, data/convgnn/, data/policy_large/, data/eval_large/) are regenerable pipeline outputs \u00e2\u20ac\u201d treat as ephemeral demo artifacts rather than authoritative data. The Neo4j display layer (DISPLAY.md + configs/queries.cypher + configs/neo4j.grass + stage4_ppg/neo4j_loader.py + stage4_ppg/cypher_runner.py) is CANONICAL as a shipped feature but explicitly optional: DISPLAY.md line 8 declares 'the pipeline, PRCS slicing, and tests run fully without a database' and the PPG is always written to CSV/pkl/graphml as the authoritative form. Neo4j is a viewer, never a source of truth. No file in this subsystem is broken or empty except data/apg/ (empty placeholder \u00e2\u20ac\u201d stale). No LEGACY imports live here; the imported Static Code Analysis / Document Analysis modules referenced by configs/ppg.yaml (`Document Analysis Module/output/personal_info_results.csv`) sit outside this subsystem."
+  },
+  {
+    "module_name": "Test suite, smoke tests, reproducibility",
+    "responsibility": "Pytest-based test suite that verifies every stage of the APK -> APG -> PPG -> PRCS -> ADPPG -> ConvGNN -> Caption -> Policy -> Nutrition/App -> Eval pipeline against a committed synthetic APG fixture. Shared session-scoped fixtures in conftest.py build PPG, PRCS, and ADPPG dataset artifacts once and reuse them across cross-stage tests, so unit tests (weak labeler, catalogs, text metrics, F-Droid/AndroZoo resolvers, Cypher library) and integration tests (PPG build, PRCS extraction, dataset splits, ConvGNN training, caption/policy assembly, judge, ablation, Stage 8 nutrition app, end-to-end pipeline drivers) all run offline in one `pytest -q` invocation.",
+    "key_files": [
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/pytest.ini",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/conftest.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/requirements-stage4.txt",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_stage4_ppg.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step2_prcs.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step2_dataset.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step2_convgnn.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step3_caption.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step3_policy.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step4_eval.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step4_userstudy.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_step4_app.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_pipeline_e2e.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_ablation.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_g1_annotation.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_neo4j_display.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_caption_judge.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/tests/test_adapters.py",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/fixtures/synthetic_apg",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/fixtures/synthetic_apg_large",
+      "C:/Users/kings/PrivacyPolicyResearch/Privacy-Caption-Generation-Project/data/fixtures/make_synthetic_apg.py"
+    ],
+    "status": "canonical",
+    "research_role": "Cross-cutting quality/repro spine for the whole APK -> APG -> PPG -> PRCS -> PAcT/ADPPG -> Model -> Caption chain. Every pipeline stage has its own test file and every cross-stage I/O contract (CSV schemas, JSONL records, splits, captions, policy docs, eval report, nutrition JSON, study CSV) is asserted end-to-end in tests/test_pipeline_e2e.py against the committed synthetic APG fixture (SYNTH_APG / SYNTH_APG_LARGE) \u00e2\u20ac\u201d i.e. this subsystem is the golden-path smoke check for the pipeline modules and the automatable half of the definition-of-done.",
+    "gaps_or_issues": [
+      "Test count is stated inconsistently across docs \u00e2\u20ac\u201d README.md line 8/183 still says '69 tests' while docs/FINAL_REPORT.md and RESULTS.md say 79; the actual `def test_` count across tests/*.py is 79.",
+      "No real APK ever enters the test suite. `Static Code Analysis Module/input/APK/sample.apk` exists in the repo but is not referenced by any test \u00e2\u20ac\u201d adapters/run_apg_csv.py and stage4_ppg/neo4j_loader.py have zero direct test coverage (acknowledged in docs/FINAL_REPORT.md line 91, still unfixed).",
+      "Real LLM providers (Anthropic) are never exercised \u00e2\u20ac\u201d test_step3_caption.py forces MockProvider and test_caption_judge.py uses provider_name='mock'; only test_real_provider_without_key_raises_clearly touches the real path, so a live-key regression could ship undetected.",
+      "Neo4j is never touched by tests: test_neo4j_display.py only unit-tests the Cypher-library render/params and semantics cache; the actual Bolt driver in stage4_ppg/neo4j_loader.py is untested (mentioned as an infra-dep gap but not gated with a skip marker).",
+      "Only two importorskip guards (torch, torch_geometric in test_step2_convgnn.py + one in test_step4_eval.py). If torch is installed but broken, tests hard-fail; there is no `@pytest.mark.slow` / `--runslow` opt-in, no CI config file (no .github/workflows, no tox.ini) \u00e2\u20ac\u201d reproducibility depends on the exact pinned wheels in requirements-stage4.txt (torch 2.12.1, torch-geometric 2.8.0, CPython 3.14.0).",
+      "The session-scoped `dataset_dir` fixture in conftest.py runs a real PPG->PRCS->build_dataset pipeline on `synthetic_apg_large` \u00e2\u20ac\u201d so a failure in Stage 4 cascades into ~40 downstream test errors and obscures the true root cause; no smaller isolated fixture is provided.",
+      "`tests/test_g1_annotation.py::test_ingest_and_override` reaches into `dataset_dir.parent / 'prcs'`, an implicit contract with the conftest fixture's tmp layout \u00e2\u20ac\u201d if the fixture is refactored, this test silently breaks.",
+      "No test covers the run_g1g2.py driver, pipeline/run_corpus is only touched by one assertion, and there is no negative/adversarial test for taint depth caps, precision-mode toggling, or malformed APG CSV inputs.",
+      "No `pyproject.toml` and no `[tool.pytest]` markers registered \u00e2\u20ac\u201d filterwarnings hides all DeprecationWarnings globally, which can mask real API removals (e.g. NumPy 2.x, PyTorch)."
+    ],
+    "entry_points": [
+      "python -m pytest tests/ -q  (canonical; per README section 4 and docs/FINAL_REPORT.md line 83)",
+      "pytest tests/test_pipeline_e2e.py  (end-to-end smoke over synthetic APG via pipeline.run_pipeline + pipeline.run_corpus)",
+      "pytest tests/test_stage4_ppg.py::test_ppg_build_finds_flows  (single golden-path assertion on the ppg_builder fixture)"
+    ],
+    "external_deps": [
+      "pytest==8.4.2, pytest-cov==7.0.0 (requirements-stage4.txt)",
+      "pandas==2.3.3, numpy==2.3.5, networkx==3.6.1, PyYAML==6.0.3 for fixture I/O + schema asserts",
+      "torch==2.12.1 + torch_geometric==2.8.0 \u00e2\u20ac\u201d required by test_step2_convgnn.py and one test in test_step4_eval.py; guarded with pytest.importorskip",
+      "committed CSV fixtures under data/fixtures/synthetic_apg (2 apps) and data/fixtures/synthetic_apg_large (8 apps), regenerable via data/fixtures/make_synthetic_apg.py",
+      "no network, no Neo4j, no Anthropic API key needed to run the suite (adapters use inline dict fixtures, caption tests use MockProvider)",
+      "androguard==4.1.4 is listed but never imported by tests (only real-APK adapter needs it)"
+    ],
+    "canonical_vs_experimental_notes": "Canonical and actively maintained \u00e2\u20ac\u201d this is the project's only test harness (single tests/ dir, single conftest.py, single pytest.ini). All 15 test files map 1:1 onto the pipeline modules under stage4_ppg/, step2_*/, step3_*/, step4_*/, pipeline/, and adapters/, and are cited as the definition-of-done in docs/FINAL_REPORT.md (\"79 tests green\") and the branch's most recent commits (f73d177, dc073c5). No competing test runner, no orphaned test dirs, no legacy fixtures. The only real-world coverage gaps are deliberate infra dependencies (real APK, live Neo4j, live LLM provider) rather than dead or duplicated test code.",
+    "duplicates_or_overlaps": [
+      "Caption artifacts are generated by step3_caption.generate.generate_captions inside FOUR different test files (test_step3_caption, test_step3_policy._run, test_step4_eval._artifacts, test_step4_userstudy._build, test_caption_judge). Each rebuilds captions in a fresh tmp_path \u00e2\u20ac\u201d a legitimate isolation choice, but a shared session-scoped `captions_dir` fixture would eliminate ~4x redundant work per suite run.",
+      "test_ablation.py and test_step2_convgnn.py both train a tiny ConvGNN over the same session `dataset_dir` fixture (epochs=5); the ablation run also trains twice internally (full_ppg + apg_only), so ConvGNN training runs 3+ times per pytest invocation.",
+      "conftest.py's `dataset_dir` fixture and pipeline/run_pipeline.py's early stages implement the same PPG->PRCS->build_dataset sequence \u00e2\u20ac\u201d if run_pipeline evolves, the test fixture will drift unless kept in sync manually."
+    ]
+  }
+]
