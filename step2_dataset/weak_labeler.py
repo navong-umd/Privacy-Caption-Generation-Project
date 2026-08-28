@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from pplib.io_utils import load_yaml
+from pplib.pact_schema import PACT_SCHEMA_VERSION
 from pplib.schema import BANNER_WEAK, PRACTICE_LABELS, PURPOSE_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -60,4 +61,5 @@ class WeakLabeler:
             "label_source": "weak",
             "weak_banner": BANNER_WEAK,
             "rationale": "; ".join(rationale),
+            "schema_version": PACT_SCHEMA_VERSION,
         }
