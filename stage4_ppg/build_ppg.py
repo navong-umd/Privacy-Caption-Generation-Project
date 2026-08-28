@@ -149,8 +149,16 @@ class PPGBuilder:
             stype = self.stmt_props.get(tp.sink_stmt, {}).get("sink_type", "")
             threats = _linddun(stype, scat, self.cfg)
             threat_str = ";".join(threats)
-            for a, b in zip(tp.path, tp.path[1:]):
-                self._add_edge(a, b, "TAINT_FLOW", pi_type=scat, privacy_threat=threat_str)
+            # Phase 5: tag each TAINT_FLOW edge with the taint rule that produced it
+            # (ddg | icfg | call_arg | call_ret). reasons is parallel to path; reasons[i]
+            # is the rule for edge path[i-1] -> path[i]. Fallback for legacy TaintPaths
+            # (no reasons list) is "unknown" so consumers can filter but the edge still
+            # renders.
+            reasons = tp.reasons or []
+            for i, (a, b) in enumerate(zip(tp.path, tp.path[1:])):
+                rule = reasons[i + 1] if i + 1 < len(reasons) else "unknown"
+                self._add_edge(a, b, "TAINT_FLOW", pi_type=scat,
+                               privacy_threat=threat_str, taint_rule=rule)
                 for sid in (a, b):
                     props = self.stmt_props.setdefault(sid, {})
                     props["tainted"] = True
@@ -199,6 +207,7 @@ class PPGBuilder:
                 "start_id": u, "end_id": v, "type": d.get("type", ""),
                 "app_id": self.G.nodes[u].get("app_id", ""),
                 "pi_type": d.get("pi_type", ""), "privacy_threat": d.get("privacy_threat", ""),
+                "taint_rule": d.get("taint_rule", ""),
             })
         pd.DataFrame(edge_rows, columns=PPG_EDGE_COLUMNS).to_csv(
             out_dir / "PPG_edges.csv", index=False, encoding="utf-8")

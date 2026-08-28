@@ -28,7 +28,12 @@ PPG_STATEMENT_PROPS = [
 # PPG CSV columns mirror the APG style plus the overlay props + the semantic description.
 # `what_it_does` is a human-readable, per-node explanation (Neo4j display + PRCS evidence).
 PPG_NODE_COLUMNS = APG_NODE_COLUMNS + PPG_STATEMENT_PROPS + ["what_it_does"]
-PPG_EDGE_COLUMNS = ["start_id", "end_id", "type", "app_id", "pi_type", "privacy_threat"]
+# `taint_rule` (Phase 5) is per-edge provenance for TAINT_FLOW edges: which rule
+# (ddg | icfg | call_arg | call_ret) produced this edge. Empty for non-TAINT_FLOW
+# edges. Any reviewer inspecting a privacy relationship can answer "why does this
+# edge exist?" from this column alone.
+PPG_EDGE_COLUMNS = ["start_id", "end_id", "type", "app_id", "pi_type",
+                    "privacy_threat", "taint_rule"]
 
 # --- PAcT taxonomy (both heads multi-label) ---
 PRACTICE_LABELS = ["Processing", "Collecting", "Sharing", "Other"]
