@@ -9,10 +9,12 @@ the full APG without touching the original Stage 2 script.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -171,3 +173,47 @@ def write_apg(apg: APG, apg_dir: str | Path) -> None:
         apg_dir / "DDG_nodes.csv", index=False)
     pd.DataFrame([_edge_row(u, v, "DATA_DEPENDS") for u, v in apg.data_depends]).to_csv(
         apg_dir / "DDG_edges.csv", index=False)
+
+
+# ------------------------------------------------------------
+# Provenance (Phase 2)
+# ------------------------------------------------------------
+
+APG_META_FILENAME = "APG_META.json"
+
+
+def sha256_file(path: str | Path, chunk: int = 65536) -> str:
+    """Streaming SHA-256 of a file (empty string if the file is missing)."""
+    p = Path(path)
+    if not p.exists():
+        return ""
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for buf in iter(lambda: f.read(chunk), b""):
+            h.update(buf)
+    return h.hexdigest()
+
+
+def write_apg_meta(meta: Dict[str, Any], apg_dir: str | Path) -> Path:
+    """Write APG_META.json alongside the APG CSVs.
+
+    Content is caller-supplied so tests / fixtures can produce byte-stable metadata.
+    Adapters that generate metadata from a real APK should include at least:
+        apk_path, apk_sha256, app_id, generator, generator_version,
+        androguard_version, python_version, generated_at, summary
+    See adapters/run_apg_csv.py for the canonical set.
+    """
+    apg_dir = Path(apg_dir)
+    apg_dir.mkdir(parents=True, exist_ok=True)
+    path = apg_dir / APG_META_FILENAME
+    # sort_keys for byte-stable output; indent for human readability.
+    path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def load_apg_meta(apg_dir: str | Path) -> Dict[str, Any]:
+    """Load APG_META.json (empty dict if absent — meta is optional)."""
+    p = Path(apg_dir) / APG_META_FILENAME
+    if not p.exists():
+        return {}
+    return json.loads(p.read_text(encoding="utf-8"))

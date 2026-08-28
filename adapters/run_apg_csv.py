@@ -15,13 +15,19 @@ Run: python -m adapters.run_apg_csv --apk "Static Code Analysis Module/input/APK
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from pplib.apg_model import APG, write_apg
+from pplib.apg_model import APG, sha256_file, write_apg, write_apg_meta
 from pplib.io_utils import get_logger
 
 log = get_logger("run_apg_csv")
+
+# Adapter version — bump when the disassembly semantics change (parse_callee, DDG derivation, etc.).
+# Used as `generator_version` in APG_META.json so downstream artifacts can trace their origin.
+ADAPTER_VERSION = "2.0.0"
 
 
 def _cls_dots(raw: str) -> str:
@@ -115,7 +121,34 @@ def run_apg_csv(apk_path: str, out_dir: str | None, write: bool = True) -> APG:
 
     if write and out_dir:
         write_apg(apg, out_dir)
-        log.info("Wrote APG CSVs: %s", apg.summary())
+        # Phase 2 provenance: pin every APG output to its APK, adapter version, and tool versions.
+        try:
+            import androguard as _ag
+            ag_version = getattr(_ag, "__version__", "unknown")
+        except Exception:
+            ag_version = "unknown"
+        meta = {
+            "apk_path": str(Path(apk_path).as_posix()),
+            "apk_sha256": sha256_file(apk_path),
+            "apk_size_bytes": Path(apk_path).stat().st_size if Path(apk_path).exists() else 0,
+            "app_id": apg.app_id,
+            "package_name": a.get_package(),
+            "generator": "adapters.run_apg_csv",
+            "generator_version": ADAPTER_VERSION,
+            "androguard_version": ag_version,
+            "python_version": sys.version.split()[0],
+            "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+            "summary": {
+                "classes": len(apg.classes),
+                "methods": len(apg.methods),
+                "statements": len(apg.statements),
+                "calls": len(apg.calls),
+                "icfg_edges": len(apg.icfg_next),
+                "ddg_edges": len(apg.data_depends),
+            },
+        }
+        write_apg_meta(meta, out_dir)
+        log.info("Wrote APG CSVs + APG_META.json: %s", apg.summary())
     else:
         log.info("Built APG in memory: %s", apg.summary())
     return apg
