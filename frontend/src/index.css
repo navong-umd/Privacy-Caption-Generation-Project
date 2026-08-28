@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Design tokens: restrained academic system, one accent, paper base. */
+/* ------------------------------------------------------------------ */
+@theme {
+  --color-paper: #ffffff;
+  --color-surface: #fafaf9;
+  --color-surface-2: #f4f4f5;
+  --color-ink: #18181b;
+  --color-muted: #52525b;
+  --color-faint: #71717a;
+  --color-line: #e7e5e4;
+  --color-line-strong: #d6d3d1;
+  --color-accent: #1e40af;
+  --color-accent-hover: #1c3a9e;
+  --color-accent-soft: #eef2ff;
+  --color-accent-border: #c7d2fe;
+  --color-warn: #92400e;
+  --color-warn-soft: #fef3c7;
+  --color-warn-border: #fde68a;
+  --color-good: #166534;
+  --color-good-soft: #dcfce7;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+    Menlo, Consolas, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.011em;
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  code, pre, .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "liga" 0;
+  }
+
+  ::selection {
+    background: var(--color-accent-soft);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Markdown rendering for the research documents (no typography plugin) */
+/* ------------------------------------------------------------------ */
+.markdown {
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.markdown > *:first-child { margin-top: 0; }
+.markdown h1 { font-size: 1.6rem; margin: 0 0 1rem; line-height: 1.25; }
+.markdown h2 {
+  font-size: 1.2rem;
+  margin: 2.2rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.markdown h3 { font-size: 1rem; margin: 1.6rem 0 0.5rem; }
+.markdown h4 { font-size: 0.9rem; margin: 1.2rem 0 0.4rem; color: var(--color-muted); }
+.markdown p { margin: 0.75rem 0; }
+.markdown ul, .markdown ol { margin: 0.75rem 0; padding-left: 1.4rem; }
+.markdown li { margin: 0.25rem 0; }
+.markdown li::marker { color: var(--color-faint); }
+.markdown a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
+.markdown a:hover { color: var(--color-accent-hover); }
+.markdown strong { font-weight: 600; }
+.markdown blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 0 0.5rem 1rem;
+  border-left: 3px solid var(--color-accent-border);
+  background: var(--color-accent-soft);
+  color: var(--color-muted);
+  border-radius: 0 4px 4px 0;
+}
+.markdown code {
+  font-size: 0.85em;
+  background: var(--color-surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-line);
+}
+.markdown pre {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.markdown pre code { background: none; border: none; padding: 0; }
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  display: block;
+  overflow-x: auto;
+}
+.markdown th, .markdown td {
+  border: 1px solid var(--color-line);
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown th { background: var(--color-surface); font-weight: 600; }
+.markdown hr { border: none; border-top: 1px solid var(--color-line); margin: 2rem 0; }
+
+/* Subtle entrance used sparingly on route content. */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.fade-in { animation: fade-in 0.18s ease-out; }
