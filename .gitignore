@@ -13,6 +13,8 @@ htmlcov/
 
 # Generated pipeline outputs (regenerable). Everything under data/ is ignored...
 data/*
-# ...except the committed synthetic fixtures, so tests pass on a fresh checkout.
+# ...except the committed synthetic fixtures (so tests pass on a fresh checkout)
+# and the data/ inventory doc.
 !data/fixtures/
 !data/fixtures/**
+!data/README.md

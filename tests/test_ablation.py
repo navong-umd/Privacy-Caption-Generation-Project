@@ -1,6 +1,14 @@
 """Tests for the PPG-vs-APG ablation (offline; tiny training on the synthetic fixture)."""
 from __future__ import annotations
 
+import pytest
+
+# torch + torch_geometric are pulled in transitively at import time by
+# step2_convgnn.data (torch) and step2_convgnn.ablation -> train (torch_geometric).
+# Skip the whole module cleanly when either wheel is absent (e.g. lean CI profile).
+pytest.importorskip("torch")
+pytest.importorskip("torch_geometric")
+
 from step2_convgnn.data import _node_features, _tokens, FEAT_DIM, TOKEN_HOOK_DIM
 from step2_convgnn.ablation import run_ablation
 

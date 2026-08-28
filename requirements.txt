@@ -1,0 +1,18 @@
+# Phase 1 runtime — reproduces the file-only pipeline (synthetic fixtures + 79 tests).
+# CPython 3.14.0 assumed (see research/ENVIRONMENT.md).
+#
+# For extras, install the matching sibling file:
+#   requirements-dev.txt   → pytest, pytest-cov
+#   requirements-apk.txt   → androguard (real .apk disassembly, Stage 1)
+#   requirements-llm.txt   → anthropic, openai (real caption generation, Step 3)
+#   requirements-neo4j.txt → neo4j (optional PPG viewer, DISPLAY.md)
+#
+# Or, equivalently, `pip install -e ".[dev,apk,llm,neo4j]"` via pyproject.toml.
+
+pandas==2.3.3
+numpy==2.3.5
+networkx==3.6.1
+PyYAML==6.0.3
+scikit-learn==1.9.0
+torch==2.12.1
+torch-geometric==2.8.0

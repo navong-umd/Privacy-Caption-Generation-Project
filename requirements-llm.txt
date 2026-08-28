@@ -1,0 +1,5 @@
+# Optional: real LLM providers for caption generation (Step 3) and LLM-judge eval (Step 4).
+# The default caption provider is offline 'mock' — these are only needed for
+# `--provider anthropic` or `--provider openai` (or openai-compatible base_url).
+anthropic>=0.40,<1
+openai>=1.50,<2

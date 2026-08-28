@@ -1,0 +1,22 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+htmlcov
+*.egg-info
+.env
+.env.*
+!.env.example
+# Every gigabyte-scale derivative — see data/README.md.
+data/*
+!data/fixtures/
+!data/fixtures/**
+# Legacy trees not part of the current pipeline
+"Document Analysis Module"
+"Static Code Analysis Module"
+PriGenLocal

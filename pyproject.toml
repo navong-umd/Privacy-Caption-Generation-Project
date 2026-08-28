@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "privacy-caption-generation"
+version = "0.4.0"
+description = "Android privacy-caption generation via APG → PPG → PRCS → RGCN → LLM (research prototype)"
+readme = "README.md"
+requires-python = "==3.14.*"
+authors = [{ name = "Ali Ferris" }]
+license = { text = "Research use only — see repository terms" }
+classifiers = [
+  "Programming Language :: Python :: 3.14",
+  "Intended Audience :: Science/Research",
+  "Topic :: Security",
+  "Topic :: Software Development :: Static Analysis",
+]
+
+# Core runtime for the file-only pipeline (reproduces the 79-test suite on
+# committed synthetic fixtures). Real-APK disassembly, real LLM providers,
+# and live Neo4j display are optional extras below.
+dependencies = [
+  "pandas==2.3.3",
+  "numpy==2.3.5",
+  "networkx==3.6.1",
+  "PyYAML==6.0.3",
+  "scikit-learn==1.9.0",
+  "torch==2.12.1",
+  "torch-geometric==2.8.0",
+]
+
+[project.optional-dependencies]
+dev  = ["pytest==8.4.2", "pytest-cov==7.0.0"]
+apk  = ["androguard==4.1.4"]                       # Stage 1 disassembly of real .apk files
+llm  = ["anthropic>=0.40,<1", "openai>=1.50,<2"]   # Step 3 real caption providers (default is 'mock')
+neo4j = ["neo4j==6.2.0"]                            # optional PPG viewer (DISPLAY.md)
+# Convenience: everything
+all  = [
+  "pytest==8.4.2", "pytest-cov==7.0.0",
+  "androguard==4.1.4",
+  "anthropic>=0.40,<1", "openai>=1.50,<2",
+  "neo4j==6.2.0",
+]
+
+# NOTE: this project is intended to be run from the repo root via `python -m …`
+# (see pipeline/run_pipeline.py, pipeline/run_corpus.py). Not currently packaged
+# as installable modules — conftest.py inserts the repo root on sys.path.
+
+[tool.setuptools]
+py-modules = []

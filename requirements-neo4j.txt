@@ -1,0 +1,4 @@
+# Optional: live Neo4j viewer (stage4_ppg/neo4j_loader.py + cypher_runner.py).
+# Not required by the pipeline — ground truth is always the CSV/pkl/graphml on disk.
+# See DISPLAY.md for setup.
+neo4j==6.2.0
