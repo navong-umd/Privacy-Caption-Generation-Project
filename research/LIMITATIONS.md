@@ -32,9 +32,8 @@ Every limitation below is a real gap in this repository at the end of the Phase 
 
 ## Reproducibility
 
-- **`Document Analysis Module/` scripts are frozen.** Hard-coded absolute paths and a missing `esalib/` Java tool mean the CSV inputs to the KB cannot be regenerated on this checkout. Only the pre-computed CSVs are usable.
+- **`legacy/document_analysis/` scripts are frozen.** Hard-coded absolute paths and a missing `esalib/` Java tool mean the CSV inputs to the KB cannot be regenerated on this checkout. Only the pre-computed CSVs are usable.
 - **Real-APK smoke test is skipped without androguard.** Fixture-based coverage stays green in the lean CI profile; real APKs require the extras install.
-- **Neo4j credentials are still hardcoded literals** in `stage4_ppg/neo4j_loader.py`. Phase 1 added the config section documenting the values, but the wire-up is not done. See [ENVIRONMENT.md §10](ENVIRONMENT.md#10-what-phase-1-explicitly-did-not-do).
 
 ## Scope reservations that are not bugs
 

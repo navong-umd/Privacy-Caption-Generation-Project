@@ -3,7 +3,7 @@ Purpose: ADAPTER - fetch a small corpus of open-source APKs from F-Droid (no API
 Input:   --packages "pkg1,pkg2" (or --list FILE), --out data/corpus, --max N.
 Output:  downloaded .apk files in --out, ready for `python -m pipeline.run_pipeline --apk <file>`.
 
-A no-credential way to start the G4 -> G1 loop while the AndroZoo key is pending (HANDOFF_G4.md).
+A no-credential way to start the G4 -> G1 loop while the AndroZoo key is pending (legacy/notes/handoffs/HANDOFF_G4.md).
 Uses only the stdlib (urllib). The index-resolution logic is pure/offline-testable; the only
 network calls are the explicit index + APK downloads the user asked for.
 """

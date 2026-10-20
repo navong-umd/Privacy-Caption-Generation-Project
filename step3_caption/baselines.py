@@ -52,7 +52,7 @@ class RuleBaseline:
     """Rule-based classifier: sink_type + third-party SDK class match.
 
     Delegates to the WeakLabeler that already implements the same rule set
-    (see configs/weak_labels.yaml + configs/sdk_catalog.yaml + docs/PACT_SCHEMA.md).
+    (see configs/weak_labels.yaml + configs/sdk_catalog.yaml + research/PACT_SCHEMA.md).
     Kept as a thin wrapper so callers can reason about baselines uniformly.
     """
 

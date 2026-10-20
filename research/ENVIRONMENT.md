@@ -52,7 +52,7 @@ Pinned in `requirements.txt` and `pyproject.toml`:
 
 `loguru` and `certifi` are additional transitive optional deps used solely to silence androguard log spam / verify AndroZoo TLS. Both are try/except-guarded and degrade cleanly; not pinned here.
 
-Full audit at [research/_recon/subsystem_maps.json](_recon/subsystem_maps.json) (Phase 0) and in the probe workflow `wf_125796bc-397` transcript.
+Full audit in [CODEBASE_ARCHITECTURE.md](CODEBASE_ARCHITECTURE.md) (Phase 0).
 
 ---
 
@@ -173,7 +173,7 @@ Any test failure = red build. There is no `--allow-fail` matrix.
 
 ## 9. Reproducing the numbers in the docs
 
-- README.md, docs/FINAL_REPORT.md, docs/RESULTS.md report **79 tests green** and metrics from `data/corpus_run/` (10,721 PRCS across 7 real apps). All of that is regenerable with the golden-path commands in `data/README.md`.
+- legacy/notes/FINAL_REPORT.md and legacy/notes/RESULTS.md report **79 tests green** and metrics from `data/corpus_run/` (10,721 PRCS across 7 real apps). All of that is regenerable with the golden-path commands in `data/README.md`.
 - The README banner still says "69 green" from an earlier Phase; the correct count is 79 (verified by Phase 1 probe). Docs sweep for that mismatch is a Phase 22 finalization task; the CI build log is the authoritative source.
 
 ---
@@ -185,7 +185,7 @@ Per the CODEBASE_ARCHITECTURE.md scope statement, none of the following are touc
 - Any model change.
 - Any new labels (G1 shortlist stays open).
 - Any refactor of the module layout in `research/CODEBASE_ARCHITECTURE.md` §6.
-- Any `archive/` move of the legacy `PriGenLocal/`, `Document Analysis Module/`, or `Static Code Analysis Module/` trees.
-- Any wiring of the new `configs/ppg.yaml::neo4j` section into `stage4_ppg/neo4j_loader.py` (still uses the hardcoded literals — noted inline in the config file).
+- Any `archive/` move of the legacy `PriGenLocal/`, `legacy/document_analysis/`, or `legacy/static_analysis/` trees.
+- Any wiring of the new `configs/ppg.yaml::neo4j` section into `stage4_ppg/neo4j_loader.py` (since done: uri/user come from env or this section, the password only from `NEO4J_PASSWORD`).
 
 Those all come in later phases and depend on Phase 1 being green first.

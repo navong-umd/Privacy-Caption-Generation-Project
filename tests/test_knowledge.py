@@ -1,7 +1,7 @@
 """Phase 4 unified knowledge-base lookup tests.
 
 Exercises pplib.knowledge.KnowledgeBase against the real configs/ppg.yaml,
-configs/sinks.yaml, configs/sdk_catalog.yaml, and Document Analysis Module CSVs.
+configs/sinks.yaml, configs/sdk_catalog.yaml, and the data/knowledge_base/ CSVs.
 
 The knowledge base is the single source of truth every downstream consumer must
 share for API classification. These tests guarantee:

@@ -1,7 +1,7 @@
 """
 Purpose: Unified Android privacy knowledge-base lookup (Phase 4).
 Input:   configs/ppg.yaml + configs/sinks.yaml + configs/sdk_catalog.yaml + the two
-         Document Analysis Module CSVs (personal_info_results.csv, formatted_sources.csv).
+         knowledge-base CSVs in data/knowledge_base/ (personal_info_results.csv, formatted_sources.csv).
 Output:  A single `KnowledgeBase.lookup(callee)` call returning everything the KB knows
          about a given API — its source classification (with tier + provenance), its sink
          classification, the associated Android permission, and the SDK purpose bucket
@@ -51,7 +51,7 @@ class KnowledgeHit:
 # Kept here so consumers do not have to grep source code to know where a mapping came from.
 _SOURCE_PROVENANCE = {
     "known": "configs/ppg.yaml::known_sources (hand-curated public-API allowlist)",
-    "susi":  "Document Analysis Module/output/formatted_sources.csv "
+    "susi":  "data/knowledge_base/formatted_sources.csv "
              "(SuSi 17,801-signature catalog; Arzt et al. 2014)",
     "susi_method": "SuSi method-name-only match (opt-in via "
                    "configs/ppg.yaml::sources.formatted_match_by_method_name; recall mode, noisy)",

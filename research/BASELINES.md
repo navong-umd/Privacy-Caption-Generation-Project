@@ -71,7 +71,7 @@ Every consumer that reports these numbers on a corpus with any weak-labeled reco
 
 **Status**: explicit untrained placeholder. `BASELINE_TAG = "code2seq-baseline (untrained placeholder)"`. Renders a template caption from source and sink API names plus the (weak) Practice label. Does not touch a trained model.
 
-**Why untrained**: a trained Code2Seq captioner needs paired (code path -> caption) data. Those pairs only exist after human annotation (Gate G1) produces reference captions. `docs/RESULTS.md` records this as an open gate.
+**Why untrained**: a trained Code2Seq captioner needs paired (code path -> caption) data. Those pairs only exist after human annotation (Gate G1) produces reference captions. `legacy/notes/RESULTS.md` records this as an open gate.
 
 **Roadmap to a real Code2Seq baseline**:
 
@@ -96,7 +96,7 @@ Phase 21 (final experiments matrix) is where these baselines get their canonical
 
 ## 6. What Phase 10 explicitly did NOT do
 
-- Did not run the baselines on the blessed corpus to produce a numbers table. That is Phase 21 territory. Running now, before G1 clears the weak banner, would enshrine unverified numbers in `docs/RESULTS.md`.
+- Did not run the baselines on the blessed corpus to produce a numbers table. That is Phase 21 territory. Running now, before G1 clears the weak banner, would enshrine unverified numbers in `legacy/notes/RESULTS.md`.
 - Did not train a real Code2Seq. See §4 for the reason.
 - Did not add feature engineering beyond the code snippet and API strings. The whole point of the graph vs code ablation is to see if graph structure improves over a fair text-only baseline; feature-heavy tuning here would confound that.
 - Did not add a per-baseline hyperparameter search. `max_features=5000` and `LogisticRegression(solver='liblinear', max_iter=200)` are defensible defaults; tuning is a Phase 12/21 concern.

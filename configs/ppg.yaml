@@ -5,20 +5,16 @@ paths:
   # Points at the committed synthetic fixture so the CLI works on a fresh clone.
   # Real runs pass --apg data/apg_real / data/apg_fdroid explicitly (see data/README.md).
   apg_dir: data/fixtures/synthetic_apg
-  personal_info_csv: "Document Analysis Module/output/personal_info_results.csv"
-  formatted_sources_csv: "Document Analysis Module/output/formatted_sources.csv"
+  personal_info_csv: data/knowledge_base/personal_info_results.csv
+  formatted_sources_csv: data/knowledge_base/formatted_sources.csv
   sinks_catalog: configs/sinks.yaml
   out_dir: data/ppg                       # output: PPG_nodes.csv / PPG_edges.csv / ppg.graphml / ppg.pkl
 
 # Neo4j connection for the optional PPG viewer (see DISPLAY.md).
-# Currently unread — stage4_ppg/neo4j_loader.py uses hardcoded defaults matching
-# this block. A future ticket will wire this section up (Phase 5/6 config cleanup);
-# in the meantime, edit both here AND stage4_ppg/neo4j_loader.py when changing creds.
+# NEO4J_URI / NEO4J_USER override these; the password is read only from NEO4J_PASSWORD (.env).
 neo4j:
   uri: bolt://localhost:7687
   user: neo4j
-  password: password
-  database: neo4j
 
 sources:
   use_known_sources: true                 # curated public-API PI signatures (high precision)

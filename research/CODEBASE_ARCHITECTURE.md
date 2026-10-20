@@ -1,6 +1,8 @@
 # Codebase Architecture
 
-_Phase 0 deliverable. Source: 12-agent parallel reconnaissance, workflow `wf_69d16800-c79`, 2026-08-28. Per-subsystem JSON evidence at [research/_recon/subsystem_maps.json](_recon/subsystem_maps.json)._
+_Phase 0 deliverable. Source: 12-agent parallel reconnaissance, workflow `wf_69d16800-c79`, 2026-08-28._
+
+> Snapshot from 2026-08-28. Since then the legacy trees moved: `Static Code Analysis Module/` to `legacy/static_analysis/`, the `Document Analysis Module/` scripts to `legacy/document_analysis/` and its CSV/TXT data to `data/knowledge_base/`, `PriGenLocal/` was removed (empty submodule stubs, orphan APKs, decompiled third-party code), and the old `docs/` notes to `legacy/notes/`. Paths below are updated where the file still exists.
 
 Branch: `Ali-F/Branch` (forked from `stage4-ppg-convgnn`). 79 tests green as of the last committed state on the parent branch. Pipeline runs end-to-end on a committed synthetic fixture and on a real 8-APK AndroZoo corpus (10,721 PRCS across 7 apps).
 
@@ -42,9 +44,9 @@ Neo4j is an **optional viewer** (`stage4_ppg/neo4j_loader.py` + `stage4_ppg/cyph
 **Empty or unrunnable:**
 
 - `PriGenLocal/PDroid/` and `PriGenLocal/code2seq/` — both are empty directories. No module, no checkpoint, no vocab, no entry point.
-- `Document Analysis Module/esalib/` — empty. `utils_main_api_Des_to_Info_final.py` shells out to `esalib/run_analyzer.bat` which does not exist; re-running the API→PI extraction is impossible without restoring the Java ESA tool.
-- `Document Analysis Module/Sourcecode/*.py` — hard-coded absolute paths `C:\Users\2015n\OneDrive\Desktop\...` in every script. Only the pre-computed CSVs under `Document Analysis Module/output/` are usable.
-- `Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py` and the five `MCG_reachability*` variants — same hard-coded `C:\Users\2015n\...` paths and require a running Neo4j at `bolt://localhost:7687`. Cannot execute in this checkout.
+- `esalib/` — empty. `utils_main_api_Des_to_Info_final.py` shells out to `esalib/run_analyzer.bat` which does not exist; re-running the API→PI extraction is impossible without restoring the Java ESA tool.
+- `legacy/document_analysis/*.py` — hard-coded absolute paths `<user-home>\...` in every script. Only the pre-computed CSVs under `data/knowledge_base/` are usable.
+- `legacy/static_analysis/consolidated/androguard_analysis_APG_III_Update1Fixed_14.py` and the five `MCG_reachability*` variants — same hard-coded personal absolute paths (since replaced with folder-relative paths) and require a running Neo4j at `bolt://localhost:7687`. Cannot execute in this checkout.
 - `data/apg/` — empty placeholder, yet `configs/ppg.yaml` still points `paths.apg_dir: data/apg`. Real runs write to `data/apg_real/` or `data/apg_fdroid/`.
 - `data/dataset/splits.json` — ships with `test: []` (synthetic bootstrap has no test split). Real eval requires `data/dataset_large/` or `data/eval_run/`.
 
@@ -53,9 +55,9 @@ Neo4j is an **optional viewer** (`stage4_ppg/neo4j_loader.py` + `stage4_ppg/cyph
 - **`step3_caption/code2seq_baseline.py` is an untrained placeholder** — `BASELINE_TAG = "code2seq-baseline (untrained placeholder)"`. Regex-over-method-tokens template. No real prior-work baseline exists.
 - **No human reference captions on disk.** `step4_eval/evaluate.py::evaluate_captions` therefore always returns "no references" and BLEU-4/ROUGE-L never actually run.
 - **G1 (human PAcT labels) and G3 (human user study) are open.** All labels driving the current numbers are `WEAK`. `BANNER_BOOTSTRAP` fires end-to-end.
-- **`step4_eval/caption_judge.py` is not wired into either pipeline driver.** G2 numbers in `docs/RESULTS.md` come from a manual out-of-band invocation.
+- **`step4_eval/caption_judge.py` is not wired into either pipeline driver.** G2 numbers in `legacy/notes/RESULTS.md` come from a manual out-of-band invocation.
 - **Real LLM provider paths are untested** (`_ApiProvider.generate`, `_llm_score`, `_llm_pairwise` all carry `# pragma: no cover`).
-- **Neo4j credentials are baked as literals** in `stage4_ppg/neo4j_loader.py` (`bolt://localhost:7687 / neo4j / password`). `DISPLAY.md` tells users to override via `configs/ppg.yaml -> neo4j:`, but no such section exists in the committed config.
+- **Neo4j credentials were baked as literals** in `stage4_ppg/neo4j_loader.py`. Since fixed: `connection_settings` reads `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` (password never from config).
 - **Taint recall vs precision is unresolved.** Default `ppg.yaml` uses the recall settings (`follow_icfg: true`, unbounded flows per source, CALL-RET propagation to every callsite of any tainted method). `pipeline._precision_config` writes a `ppg.precision.yaml` at runtime only when `--precision` is passed. TAINT_FLOW edges carry no per-edge provenance to filter after the fact.
 - **Device hardcoded to CPU** in `step2_convgnn/train.py:82`; no CUDA path.
 - **Threshold hardcoded to 0.5** in `step2_convgnn/train.py::_predict`; no per-label calibration despite imbalanced PAcT labels.
@@ -66,14 +68,14 @@ Neo4j is an **optional viewer** (`stage4_ppg/neo4j_loader.py` + `stage4_ppg/cyph
 
 | Concern | Canonical | Legacy / Duplicate | Notes |
 |---------|-----------|--------------------|-------|
-| APK → APG disassembly | `adapters/run_apg_csv.py` | `Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py` (+ 5 `MCG_reachability*` variants + `androguard_analysis_APG_Bar.py`) | Adapter is a line-copy mirror of the legacy script. Only `pplib/schema.py` enforces they stay in sync — no test asserts it. |
-| API → PI knowledge base | `Document Analysis Module/output/personal_info_results.csv` (frozen CSV, canonical input to `stage4_ppg/catalogs.py`) | `Document Analysis Module/Sourcecode/utils_main_api_Des_to_Info{.py, _Save.py, _Save_Test.py, _final.py}` — four near-clones; `Sourcecode/Other/api_Des_to_Info_Test.py`, `personal_Info_Ext.py`, `retrieve_API_Des.py` are byte-identical (5031 bytes) | The `.py` scripts are frozen; only the produced CSV is load-bearing. |
+| APK → APG disassembly | `adapters/run_apg_csv.py` | `legacy/static_analysis/consolidated/androguard_analysis_APG_III_Update1Fixed_14.py` (+ 5 `MCG_reachability*` variants + `androguard_analysis_APG_Bar.py`) | Adapter is a line-copy mirror of the legacy script. Only `pplib/schema.py` enforces they stay in sync — no test asserts it. |
+| API → PI knowledge base | `data/knowledge_base/personal_info_results.csv` (frozen CSV, canonical input to `stage4_ppg/catalogs.py`) | `legacy/document_analysis/utils_main_api_Des_to_Info{.py, _Save.py, _Save_Test.py, _final.py}` — four near-clones; `Sourcecode/Other/api_Des_to_Info_Test.py`, `personal_Info_Ext.py`, `retrieve_API_Des.py` are byte-identical (5031 bytes) | The `.py` scripts are frozen; only the produced CSV is load-bearing. |
 | Code2Seq baseline | `step3_caption/code2seq_baseline.py` (in-repo untrained placeholder) | `PriGenLocal/code2seq/` (empty) | PriGenLocal is dead reference material. |
 | PRCS artifacts | `data/dataset/adppg.jsonl` (one line per PRCS with labels) | `data/prcs/prcs_<id>.json` + `data/dataset/codr_export/prcs_<id>.json` | Three serializations of each PRCS. `codr_export/` is redundant unless Codr requires one-file-per-record. |
 | Sink egress catalog | `stage4_ppg/catalogs.py::SinkCatalog` (reads `configs/sinks.yaml`) + heuristic verb list | Legacy `MCG_reachability*` scripts embed their own sensitive-API list | Legacy is unreferenced. |
 | Reachability from entry to sensitive API | `stage4_ppg/taint.py` (in-memory BFS over DDG/ICFG/CALLS) | `androguard_analysis_MCG_reachability{,_Feasible,_Full,_Update}.py` (Neo4j BFS) | Legacy is unreferenced. |
-| SuSi source/sink parsing | `stage4_ppg/catalogs.py::SourceCatalog._load_susi` (consumer) + `Document Analysis Module/output/formatted_sources.csv` (checked-in artifact) | `Document Analysis Module/Sourcecode/structure_input_data.py` (producer, frozen) | Not truly redundant — one produces, one consumes — but both know the SuSi schema. |
-| ConvGNN training call sites | `step2_convgnn.train.train()` invoked from `pipeline/run_pipeline.py`, `pipeline/run_corpus.py`, `run_g1g2.py` | — | Three call sites with drifted defaults (epochs 40 vs 40 vs 30; out dirs `convgnn/` vs `convgnn/` vs `model/`). No shared wrapper. |
+| SuSi source/sink parsing | `stage4_ppg/catalogs.py::SourceCatalog._load_susi` (consumer) + `data/knowledge_base/formatted_sources.csv` (checked-in artifact) | `legacy/document_analysis/structure_input_data.py` (producer, frozen) | Not truly redundant — one produces, one consumes — but both know the SuSi schema. |
+| ConvGNN training call sites | `step2_convgnn.train.train()` invoked from `pipeline/run_pipeline.py`, `pipeline/run_corpus.py`, `run_g1g2.py` (since removed) | — | Three call sites with drifted defaults (epochs 40 vs 40 vs 30; out dirs `convgnn/` vs `convgnn/` vs `model/`). No shared wrapper. |
 | Rating sheet format | `step4_eval/evaluate.py::evaluate_captions` → `caption_rating_sheet.csv` (solo grading) | `step4_userstudy/build_study.py` → `ratings_template.csv` (blind A/B) | Complementary instruments; overlapping columns (`accuracy_1_5`, `clarity_1_5`, `completeness_1_5`); no shared schema module. |
 | Evidence dict for downstream text | `step3_caption/generate.py::_evidence(rec)` | `step3_policy/assemble.py::_app_section_data` / per-fact dict | Same keys, two implementations; a PRCS field rename must be made in both. |
 | Weak-label banner rendering | `step3_caption/generate.py` | `step3_policy/assemble.py` | Both consume `pplib.schema.BANNER_WEAK` but decide independently how to render. |
@@ -81,7 +83,7 @@ Neo4j is an **optional viewer** (`stage4_ppg/neo4j_loader.py` + `stage4_ppg/cyph
 | Output roots | `data/run/` (single-app) | `data/corpus_run/` (corpus), plus `data/*_large/` synthetic siblings, plus mock/`_llm` variant pairs (`captions/` vs `captions_llm/`, etc.) | Provenance not recorded. |
 | APG source folders | `data/apg_real/` (AndroZoo), `data/apg_fdroid/` (F-Droid) | `data/apg/` (empty placeholder still named in `configs/ppg.yaml`) | — |
 
-Directory-name overload: "Stage 3" refers to `Document Analysis Module/` (API-docs → PI) in the old plan and `step3_caption/` + `step3_policy/` (captions + policy) in the current pipeline. These do entirely different jobs.
+Directory-name overload: "Stage 3" refers to `legacy/document_analysis/` (API-docs → PI) in the old plan and `step3_caption/` + `step3_policy/` (captions + policy) in the current pipeline. These do entirely different jobs.
 
 ---
 
@@ -89,15 +91,15 @@ Directory-name overload: "Stage 3" refers to `Document Analysis Module/` (API-do
 
 Preserve and pull into the canonical pipeline (or, where already inputs, freeze the artifacts and cite provenance):
 
-**From `Document Analysis Module/` (frozen, input-only):**
+**From `legacy/document_analysis/` (frozen, input-only):**
 - `output/personal_info_results.csv` — NL-derived PI types for Android APIs. Tier 3 input to `stage4_ppg/catalogs.py::SourceCatalog`.
 - `output/formatted_sources.csv` and `output/formatted_sinks.csv` — SuSi parsed catalogs. Tier 2 input.
 - `input/CatSources_v0_9.txt`, `input/CatSinks_v0_9.txt` — raw SuSi corpus (recover if the CSVs need regenerating).
 - `Sourcecode/utils_main_api_Des_to_Info_final.py`, `utils_doc_des.py`, `utils_clean_method_name.py`, `utils_dpr_score.py`, `structure_input_data.py` — the pipeline that produced the CSVs. **Fix hard-coded paths + restore `esalib/`** to make re-runnable.
 
-**From `Static Code Analysis Module/`:**
+**From `legacy/static_analysis/`:**
 - `input/APK/sample.apk` — the only checked-in small APK. Wire into a real-APK adapter test.
-- `Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py` — retain as **reference** for the exact disassembly semantics the mirror in `adapters/run_apg_csv.py` must preserve. Should become the fixture the mirror is diffed against in CI.
+- `legacy/static_analysis/consolidated/androguard_analysis_APG_III_Update1Fixed_14.py` — retain as **reference** for the exact disassembly semantics the mirror in `adapters/run_apg_csv.py` must preserve. Should become the fixture the mirror is diffed against in CI.
 - The SuSi source-key → callee-normalization comments in `parse_invoke_callee` / `extract_written_variables` / `extract_read_variables` — these are the ground truth for `adapters/run_apg_csv._parse_callee` / `_written_var` / `_read_vars`.
 
 **From `PriGenLocal/`:**
@@ -134,13 +136,13 @@ Against the 22-phase plan, the following are not present:
 **Modelling (Phases 9-14)**
 - **Learned token encoder.** `TOKEN_HOOK_DIM=8` slots reserved in `step2_convgnn/data.py`, but the only implementation is an MD5 hashing trick. Commit `f73d177` documents it as an honest-negative result at bootstrap scale. A real learned token embedding path (`code2vec`-style path contexts, `codeBERT`, or `tokenizers` + `nn.Embedding`) is absent.
 - **CUDA / distributed training path** (Phase 14).
-- **Real-APK adapter tests** (Phase 12). No test invokes `adapters/run_apg_csv.py` against `Static Code Analysis Module/input/APK/sample.apk`.
+- **Real-APK adapter tests** (Phase 12). No test invokes `adapters/run_apg_csv.py` against the local APK named by `PPCAP_SAMPLE_APK`.
 - **Live Neo4j integration test** (Phase 13). `neo4j_loader.py` is entirely untested; Cypher queries are lint-only.
 
 **Downstream products (Phases 19-22)**
 - **Interactive Nutrition Facts app.** `step4_app/build_app.py` produces a stdlib-only static site — no filtering, sorting, search, or query execution UI. Neo4j Cypher is emitted as text to paste manually.
 - **Grounded-caption verifier.** Post-hoc check that a returned LLM caption actually mentions the PI/sink/purpose in the evidence dict. Only the MockProvider is deterministically grounded; real providers can hallucinate silently.
-- **API → permission mapping from analysis** (planned in `Document Analysis Module/Read me.txt`). Currently only a hand-curated `permission_map` in `configs/ppg.yaml`.
+- **API → permission mapping from analysis** (planned in `legacy/document_analysis/NOTES.txt`). Currently only a hand-curated `permission_map` in `configs/ppg.yaml`.
 - **PScout-style permission trace** — never implemented.
 
 ---
@@ -195,16 +197,16 @@ Privacy-Caption-Generation-Project/
 **Concrete consolidation moves:**
 
 1. **Move `PriGenLocal/` under `archive/`** with a one-line `README.md` explaining it is legacy. Delete `PriGenLocal/PDroid/` and `PriGenLocal/code2seq/` (empty stubs). Delete `PriGenLocal/test_apk/sample.apk` and `tiktok.apk` (orphans).
-2. **Move the six unreferenced legacy androguard scripts** (`Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14_Bar.py`, `androguard_analysis_APG_Bar.py`, all four `androguard_analysis_MCG_reachability*.py`) under `archive/Static_Code_Analysis_Legacy/`. Keep `androguard_analysis_APG_III_Update1Fixed_14.py` in place as the mirror reference, and add a CI test that diffs the parse helpers against `adapters/run_apg_csv.py`.
+2. **Move the six unreferenced legacy androguard scripts** (`legacy/static_analysis/consolidated/androguard_analysis_APG_III_Update1Fixed_14_Bar.py`, `androguard_analysis_APG_Bar.py`, all four `androguard_analysis_MCG_reachability*.py`) under `archive/Static_Code_Analysis_Legacy/`. Keep `androguard_analysis_APG_III_Update1Fixed_14.py` in place as the mirror reference, and add a CI test that diffs the parse helpers against `adapters/run_apg_csv.py`.
 3. **Move the four `utils_main_api_Des_to_Info*` clones** and the three byte-identical `Sourcecode/Other/*` duplicates under `archive/Document_Analysis_Legacy_Scripts/`. Keep only `utils_main_api_Des_to_Info_final.py` as the canonical regenerator (path-fixed).
-4. **Freeze `Document Analysis Module/output/*.csv` and `Static Code Analysis Module/input/CatS*.txt` as versioned data inputs**, cited by hash in `configs/ppg.yaml`. Update the paths in the config to their new home under `data/knowledge_base/`.
+4. **Freeze `data/knowledge_base/*.csv` and `data/knowledge_base/CatS*.txt` as versioned data inputs**, cited by hash in `configs/ppg.yaml`. Update the paths in the config to their new home under `data/knowledge_base/`.
 5. **Add `pplib/prcs_schema.py`** — a versioned dataclass/JSON schema for the PRCS record. Have `step2_prcs`, `step2_dataset`, `step3_caption`, `step3_policy`, and `step4_eval` all import it. Kill the two independent evidence-dict constructors.
 6. **Collapse `data/prcs/` + `data/dataset/codr_export/` into a single serialization**; keep `adppg.jsonl` as the primary and generate the Codr-per-file view on demand.
 7. **Fix `configs/ppg.yaml`**: point `paths.apg_dir` at a real dir, add the missing `neo4j:` section documented in `DISPLAY.md`, split the six unrelated concerns into files with header comments.
 8. **Delete `data/apg/`** (empty).
 9. **Promote `pipeline/_precision_config` to `pplib/precision.py`** so the private cross-module import between the two drivers goes away. Add a single `train_convgnn(...)` wrapper the three call sites (`run_pipeline`, `run_corpus`, `run_g1g2`) share.
 10. **Wire `step4_eval/caption_judge.py` into `pipeline/run_pipeline.py` step 7b** behind a `--judge` flag so G2 numbers come from the same command that produces everything else.
-11. **Add a real-APK adapter smoke test** using `Static Code Analysis Module/input/APK/sample.apk`, guarded by `pytest.importorskip("androguard")`.
+11. **Add a real-APK adapter smoke test** using the local APK named by `PPCAP_SAMPLE_APK`, guarded by `pytest.importorskip("androguard")`.
 12. **Add per-edge provenance to `TAINT_FLOW`** (which of DDG-only / ICFG / CALL-ARG / CALL-RET produced it) so downstream consumers can filter without a config rebuild.
 
 ---
@@ -232,5 +234,4 @@ Explicitly out of scope for this milestone: any model change, any new labels, an
 ## Evidence trail
 
 - Workflow: `wf_69d16800-c79` (12 agents, 297 tool uses, 885K subagent tokens, 541 s wall).
-- Per-agent structured maps: [research/_recon/subsystem_maps.json](_recon/subsystem_maps.json).
-- Prior progress captured in commits `4707c01…f73d177` on parent branch `stage4-ppg-convgnn` and in `docs/FINAL_REPORT.md`, `docs/RESULTS.md`.
+- Prior progress captured in commits `4707c01…f73d177` on parent branch `stage4-ppg-convgnn` and in `legacy/notes/FINAL_REPORT.md`, `legacy/notes/RESULTS.md`.

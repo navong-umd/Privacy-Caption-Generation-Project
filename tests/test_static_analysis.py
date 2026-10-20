@@ -4,13 +4,14 @@ Covers:
   1. APG_META.json provenance roundtrip (no heavy deps).
   2. Deterministic write_apg output (no heavy deps) — the same in-memory APG
      serializes byte-identical CSVs across independent write calls.
-  3. Real-APK smoke test for adapters.run_apg_csv against
-     Static Code Analysis Module/input/APK/sample.apk. Skipped cleanly when
-     androguard is not installed.
+  3. Real-APK smoke test for adapters.run_apg_csv against the APK named by the
+     PPCAP_SAMPLE_APK env var (APKs are never committed). Skipped cleanly when
+     the variable is unset or androguard is not installed.
 """
 from __future__ import annotations
 
 import filecmp
+import os
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,6 @@ from pplib.apg_model import (
     write_apg,
     write_apg_meta,
 )
-from pplib.io_utils import REPO_ROOT
 
 APG_CSV_NAMES = [
     "AST_nodes.csv", "AST_edges.csv",
@@ -32,7 +32,7 @@ APG_CSV_NAMES = [
     "DDG_nodes.csv", "DDG_edges.csv",
 ]
 
-SAMPLE_APK = REPO_ROOT / "Static Code Analysis Module" / "input" / "APK" / "sample.apk"
+SAMPLE_APK = Path(os.environ["PPCAP_SAMPLE_APK"]) if os.environ.get("PPCAP_SAMPLE_APK") else None
 
 
 # ---------- 1. Metadata roundtrip ----------
@@ -102,9 +102,10 @@ def test_write_apg_roundtrip_preserves_shape(synth_apg_dir, tmp_path):
 
 # ---------- 3. Real-APK smoke test ----------
 
-@pytest.mark.skipif(not SAMPLE_APK.exists(), reason=f"sample APK missing: {SAMPLE_APK}")
+@pytest.mark.skipif(SAMPLE_APK is None or not SAMPLE_APK.exists(),
+                    reason="set PPCAP_SAMPLE_APK to a local .apk to run the real-APK smoke test")
 def test_run_apg_csv_on_sample_apk(tmp_path):
-    """Exercises adapters.run_apg_csv end-to-end on a real 11 MB APK.
+    """Exercises adapters.run_apg_csv end-to-end on a real APK.
 
     Guarded by importorskip('androguard') so the lean CI profile skips cleanly.
     Asserts:

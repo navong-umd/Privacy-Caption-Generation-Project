@@ -168,7 +168,7 @@ Dalvik does **not** preserve source-file / line information in the general case.
 Two implications:
 
 1. **APG-level `code` field** — the `code` column on Statement is the Dalvik instruction body, not the original Java source line. This is the only "source code" available to the model without decompilation.
-2. **Decompiled Java** (e.g. via jadx / cfr) is a separate concern. PriGenLocal/test_apk/ ships ~494 per-method decompiled Java snippets from an earlier attempt; they are archived, not wired in. See CODEBASE_ARCHITECTURE.md §4.
+2. **Decompiled Java** (e.g. via jadx / cfr) is a separate concern. An earlier attempt left ~494 per-method decompiled Java snippets in `PriGenLocal/test_apk/`; they were never wired in and have been removed (third-party code is not redistributed). See CODEBASE_ARCHITECTURE.md §4.
 
 The PPG stage adds a rule-based `what_it_does` explanation per Source / Sink node (via `stage4_ppg/semantics.py`) — that is the closest thing to a human-readable "source location" the pipeline currently emits.
 

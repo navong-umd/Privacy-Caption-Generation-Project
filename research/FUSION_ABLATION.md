@@ -57,5 +57,5 @@ Any per-head macro-F1 or micro-F1 delta must be reported alongside its BOOTSTRAP
 
 - Did not run the four-arm matrix on the blessed corpus. Numbers live in Phase 21 or nowhere.
 - Did not fold `code` into RGCN via a separate encoder branch that would deliver the code tokens through a text embedder instead of the hashing trick. That is a real extension for a future paper; the plan asks for a fair baseline, and TF-IDF is the fair baseline.
-- Did not extend `step2_convgnn/ablation.py::run_ablation` to a four-arm matrix. That refactor should follow the Phase 21 driver, not lead it, because the current two-arm entry point is wired into `pipeline/run_pipeline.py` and `docs/RESULTS.md`; a churn now would confuse the record.
+- Did not extend `step2_convgnn/ablation.py::run_ablation` to a four-arm matrix. That refactor should follow the Phase 21 driver, not lead it, because the current two-arm entry point is wired into `pipeline/run_pipeline.py` and `legacy/notes/RESULTS.md`; a churn now would confuse the record.
 - Did not change the `TOKEN_HOOK_DIM=8` hashing trick to a learned tokenizer. Commit `f73d177` documents the current hashing trick as an honest-negative at bootstrap scale; upgrading is a separate research question.

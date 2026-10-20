@@ -150,7 +150,7 @@ def merge_apgs(apgs: List[APG]) -> APG:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate a SYNTHETIC APG fixture.")
     ap.add_argument("--sources", default=str(
-        REPO_ROOT / "Document Analysis Module" / "output" / "formatted_sources.csv"))
+        REPO_ROOT / "data" / "knowledge_base" / "formatted_sources.csv"))
     ap.add_argument("--apps", type=int, default=2)
     ap.add_argument("--out", required=True)
     ap.add_argument("--merge", action="store_true",

@@ -4,13 +4,13 @@ Input:   --apk path/to/app.apk, --out data/apg.
 Output:  {AST,MCG,ICFG,DDG}_{nodes,edges}.csv (identical schema to the Stage 2 script).
 
 FLAGGED ADAPTER: the canonical Stage 2 script
-(`Static Code Analysis Module/.../androguard_analysis_APG_III_Update1Fixed_14.py`) hard-codes
+(`legacy/static_analysis/consolidated/androguard_analysis_APG_III_Update1Fixed_14.py`) hard-codes
 foreign paths and requires a running Neo4j, so it cannot run as-is here. This mirrors its
 graph-building logic (same AST/MCG/ICFG/DDG construction) and writes the same CSVs via
 `pplib.apg_model.write_apg`, leaving the original script untouched. androguard is imported
 lazily so the rest of the pipeline/tests never require it.
 
-Run: python -m adapters.run_apg_csv --apk "Static Code Analysis Module/input/APK/sample.apk" --out data/apg
+Run: python -m adapters.run_apg_csv --apk data/corpus/<app>.apk --out data/apg
 """
 from __future__ import annotations
 

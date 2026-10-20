@@ -16,7 +16,9 @@ htmlcov
 data/*
 !data/fixtures/
 !data/fixtures/**
-# Legacy trees not part of the current pipeline
-"Document Analysis Module"
-"Static Code Analysis Module"
-PriGenLocal
+!data/knowledge_base/
+!data/knowledge_base/**
+# Legacy scripts and local tooling, not part of the current pipeline
+legacy/
+frontend/node_modules/
+.turbo/

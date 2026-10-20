@@ -85,7 +85,7 @@ Every per-caption row includes `label_source` from the input caption. Downstream
 
 ## 6. Where this is wired
 
-Not yet in `pipeline/run_pipeline.py` or `pipeline/run_corpus.py`. Phase 15 lands the aggregator itself and its test suite. Wiring is a two-line change on each driver: build the `judge_rows` from `caption_judge.py --provider mock` and pass it into `aggregate(captions, records, references, judge_rows)`. Landing the wire without also introducing schema drift in `docs/RESULTS.md` is a separate task; keeping the aggregator standalone lets Phase 21 own the numbers.
+Not yet in `pipeline/run_pipeline.py` or `pipeline/run_corpus.py`. Phase 15 lands the aggregator itself and its test suite. Wiring is a two-line change on each driver: build the `judge_rows` from `caption_judge.py --provider mock` and pass it into `aggregate(captions, records, references, judge_rows)`. Landing the wire without also introducing schema drift in `legacy/notes/RESULTS.md` is a separate task; keeping the aggregator standalone lets Phase 21 own the numbers.
 
 ---
 

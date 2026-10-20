@@ -1,5 +1,5 @@
 """
-Purpose: ADAPTER - download APKs from AndroZoo using an API key (HANDOFF_G4).
+Purpose: ADAPTER - download APKs from AndroZoo using an API key (legacy/notes/handoffs/HANDOFF_G4.md).
 Input:   --sha256 "h1,h2" (direct), OR --index latest.csv[.gz] + --packages "pkg1,pkg2".
          Key is read from .env / env var ANDRO_ZOO_KEY (never printed or logged).
 Output:  downloaded <sha256>.apk in --out, ready for `python -m pipeline.run_pipeline --apk`.

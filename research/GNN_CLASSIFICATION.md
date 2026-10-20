@@ -92,6 +92,6 @@ Enforced by `tests/test_gnn_shapes.py`.
 
 - Did not run a hyperparameter sweep. `configs/convgnn.yaml` defaults are the Phase 21 starting point.
 - Did not add per-label threshold calibration. It is a known gap; a Phase 21 concern.
-- Did not switch to `HeteroData`. The `data.py` docstring explains why: PRCS graphs are small with low node-type cardinality, and RGCN over typed edges gives the same relation-awareness with far less plumbing. Justified in `docs/FINDINGS.md`.
+- Did not switch to `HeteroData`. The `data.py` docstring explains why: PRCS graphs are small with low node-type cardinality, and RGCN over typed edges gives the same relation-awareness with far less plumbing. Justified in `legacy/notes/FINDINGS.md`.
 - Did not add a code-only ablation classifier (the third leg of the graph-vs-code experiment). That is Phase 12, not Phase 11.
 - Did not train + score the RGCN in this phase. The training path was already covered by `tests/test_step2_convgnn.py` and `tests/test_ablation.py`. Phase 21 owns the final numbers.

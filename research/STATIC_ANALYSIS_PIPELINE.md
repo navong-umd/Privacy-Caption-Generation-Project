@@ -68,7 +68,7 @@ Written next to the CSVs by `adapters/run_apg_csv.py`. Example:
 
 ```json
 {
-  "apk_path": "Static Code Analysis Module/input/APK/sample.apk",
+  "apk_path": "<local APK named by PPCAP_SAMPLE_APK>",
   "apk_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "apk_size_bytes": 11904560,
   "app_id": "com.example.sample@sample.apk",
@@ -127,7 +127,7 @@ The stronger claim — _"two runs of the same APK on different machines produce 
 | `test_sha256_file_deterministic` | stdlib | Prove `sha256_file` is stable + handles missing paths. |
 | `test_write_apg_is_deterministic` | fixture | Bytewise-diff test on all 8 CSVs. |
 | `test_write_apg_roundtrip_preserves_shape` | fixture | Counts survive load→write→load. |
-| `test_run_apg_csv_on_sample_apk` | fixture + `androguard` (skipped without) | Real-APK end-to-end: 11 MB `Static Code Analysis Module/input/APK/sample.apk` → 8 CSVs + APG_META.json → non-empty APG → self-consistent summary. |
+| `test_run_apg_csv_on_sample_apk` | fixture + `androguard` (skipped without) | Real-APK end-to-end: 11 MB the local APK named by `PPCAP_SAMPLE_APK` → 8 CSVs + APG_META.json → non-empty APG → self-consistent summary. |
 
 The real-APK case addresses the gap the Phase 0 recon flagged: prior to Phase 2, no test ever invoked the adapter against a real `.apk`.
 
@@ -135,7 +135,7 @@ The real-APK case addresses the gap the Phase 0 recon flagged: prior to Phase 2,
 
 ## 6. Legacy references (Phase 0 recon, retained on disk, not run)
 
-The canonical adapter mirrors the legacy Stage-2 script in `Static Code Analysis Module/Sourcecode/Consolidated Code/androguard_analysis_APG_III_Update1Fixed_14.py`. Its five `MCG_reachability*` variants and the `androguard_analysis_APG_Bar.py` iteration are dead code (unreferenced). Keeping them for provenance until the Phase 22 archive move.
+The canonical adapter mirrors the legacy Stage-2 script in `legacy/static_analysis/consolidated/androguard_analysis_APG_III_Update1Fixed_14.py`. Its five `MCG_reachability*` variants and the `androguard_analysis_APG_Bar.py` iteration are dead code (unreferenced). Keeping them for provenance until the Phase 22 archive move.
 
 Only `pplib/schema.py`'s column constants formally enforce the mirror; a stronger structural equivalence check (diff the `_parse_callee` / `_written_var` / `_read_vars` helpers between adapter and legacy) is a Phase 22 finalization task.
 
@@ -146,4 +146,4 @@ Only `pplib/schema.py`'s column constants formally enforce the mirror; a stronge
 - **Did not** refactor the flat 8-CSV layout to `ast/`, `mcg/`, `icfg/`, `ddg/` subdirectories. `pplib/schema.py` and every downstream consumer already work with the flat layout; no research question is answered by that churn. The plan explicitly permits this ("refactor only when there is a clear benefit").
 - **Did not** wire per-edge provenance into `TAINT_FLOW` (that lives on the PPG, not the APG — belongs to Phase 5).
 - **Did not** re-run any of the six unreferenced legacy `androguard_*` variants. They remain frozen on disk until Phase 22.
-- **Did not** add a `.apk` under `data/fixtures/` — `Static Code Analysis Module/input/APK/sample.apk` (11 MB) already exists and is treated as the real-APK smoke test input. Committing another APK doubles the repo size without adding coverage.
+- **Did not** add a `.apk` under `data/fixtures/` — the local APK named by `PPCAP_SAMPLE_APK` (11 MB) already exists and is treated as the real-APK smoke test input. Committing another APK doubles the repo size without adding coverage.
