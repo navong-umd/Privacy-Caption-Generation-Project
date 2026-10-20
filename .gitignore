@@ -11,10 +11,27 @@ __pycache__/
 htmlcov/
 *.egg-info/
 
+# APKs and decompiled code are never committed (fetch them with adapters/).
+*.apk
+*.dex
+
+# Frontend build output
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Model checkpoints inside experiment folders (manifests are committed, weights are not)
+experiments/**/*.pt
+
+# Local planning notes
+.turbo/
+
 # Generated pipeline outputs (regenerable). Everything under data/ is ignored...
 data/*
-# ...except the committed synthetic fixtures (so tests pass on a fresh checkout)
-# and the data/ inventory doc.
+# ...except the committed synthetic fixtures (so tests pass on a fresh checkout),
+# the Android privacy knowledge base the PPG builder reads, and the data/ inventory doc.
 !data/fixtures/
 !data/fixtures/**
+!data/knowledge_base/
+!data/knowledge_base/**
 !data/README.md
