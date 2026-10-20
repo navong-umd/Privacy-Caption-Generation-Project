@@ -19,11 +19,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from pplib.io_utils import get_logger
+from pplib.io_utils import get_logger, load_yaml
+from stage4_ppg.neo4j_loader import connection_settings
 
 log = get_logger("cypher_runner")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LIB = REPO_ROOT / "configs" / "queries.cypher"
+DEFAULT_CONFIG = REPO_ROOT / "configs" / "ppg.yaml"
 _NAME_RE = re.compile(r"^//\s*name:\s*(\S+)\s*$")
 _DESTRUCTIVE = {"clear_app"}
 
@@ -87,7 +89,7 @@ def run_query(q: CypherQuery, params: Dict, neo4j_cfg: Dict) -> List[Dict]:
     except ImportError as e:  # offline-safe: clear guidance instead of a crash
         raise RuntimeError("The 'neo4j' package is not installed — use --show for offline "
                            "rendering, or `pip install neo4j` and start a server to --run.") from e
-    conf = {"uri": "bolt://localhost:7687", "user": "neo4j", "password": "password", **(neo4j_cfg or {})}
+    conf = connection_settings(neo4j_cfg)
     driver = GraphDatabase.driver(conf["uri"], auth=(conf["user"], conf["password"]))
     try:
         with driver.session() as s:
@@ -108,6 +110,7 @@ def _collect_params(args) -> Dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Render/run the PPG Cypher query library.")
     ap.add_argument("--library", default=str(DEFAULT_LIB))
+    ap.add_argument("--config", default=str(DEFAULT_CONFIG), help="config with the neo4j: uri/user block")
     ap.add_argument("--list", action="store_true", help="list query names + descriptions")
     ap.add_argument("--show", metavar="NAME", help="print the (rendered) Cypher, offline")
     ap.add_argument("--run", metavar="NAME", help="execute against Neo4j (needs server)")
@@ -139,7 +142,7 @@ def main() -> None:
     if q.destructive:
         log.warning("Refusing to auto-run DESTRUCTIVE query '%s'. Run it manually in Neo4j Browser.", name)
         return
-    rows = run_query(q, params, {})
+    rows = run_query(q, params, load_yaml(args.config).get("neo4j", {}))
     print(f"[{len(rows)} rows]")
     for r in rows[:50]:
         print(r)

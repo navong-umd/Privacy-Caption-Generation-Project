@@ -19,7 +19,7 @@ pip install neo4j
 python -m stage4_ppg.build_ppg --apg data/fixtures/synthetic_apg_large \
     --out data/ppg --neo4j
 ```
-Connection defaults to `bolt://localhost:7687` / `neo4j` / `password` (override in `configs/ppg.yaml` → `neo4j:`).
+Connection settings come from `NEO4J_URI`, `NEO4J_USER` and `NEO4J_PASSWORD` in `.env` (see `.env.example`). The uri and user fall back to `configs/ppg.yaml` → `neo4j:`; the password is never read from config.
 
 **B. Import the CSVs** (`PPG_nodes.csv` / `PPG_edges.csv`) with `LOAD CSV` if you prefer.
 
