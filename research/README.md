@@ -18,6 +18,7 @@ Numbers are not in this index. Numbers live only in `manifest.json` files under 
 10. [PRCS_SCHEMA.md](PRCS_SCHEMA.md) — per-flow Privacy-Relevant Code Slice.
 11. [PACT_SCHEMA.md](PACT_SCHEMA.md) — Practice + Purpose labels.
 12. [DATASET.md](DATASET.md) — ADPPG dataset assembly and leak-safe splits.
+    - [ANNOTATION_CODEBOOK.md](ANNOTATION_CODEBOOK.md) — how the two annotators label the PAcT test set.
 13. [BASELINES.md](BASELINES.md) — rule and TF-IDF baselines.
 14. [GNN_CLASSIFICATION.md](GNN_CLASSIFICATION.md) — RGCN classifier.
 15. [FUSION_ABLATION.md](FUSION_ABLATION.md) — code / graph / knowledge arm matrix.
@@ -43,5 +44,5 @@ Numbers are not in this index. Numbers live only in `manifest.json` files under 
 ## Where to look next after reading
 
 - Repo root [README.md](../README.md) for the code-level entry points.
-- [docs/](../docs/) for older narrative reports (`PROJECT.md`, `FINDINGS.md`, `FINAL_REPORT.md`) that predate this documentation set.
+- [legacy/notes/](../legacy/notes/) for older narrative reports (`PROJECT.md`, `FINDINGS.md`, `FINAL_REPORT.md`) that predate this documentation set.
 - `experiments/index.jsonl` for the run log (empty until real runs happen).

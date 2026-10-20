@@ -22,7 +22,7 @@
     = 8,040 rows. Columns: `Class Name,Return Type,Method Name,Parameter Types,Category`.
 11. **Reachability scripts** already do MCG BFS from entry points to a hard-coded `SENSITIVE_RULES`
     list — a good seed for the sink catalog (externalized to `configs/sinks.yaml`).
-12. **Hard-coded foreign paths** (`C:\Users\2015n\...`) throughout Stage 1–3 scripts → they will not
+12. **Hard-coded foreign paths** (`<user-home>\...`) throughout Stage 1–3 scripts → they will not
     run as-is on this machine, and the APG `output_csv/` folder does **not** exist here. The PPG
     builder is therefore made to read a **configurable** APG dir, decoupled from Neo4j.
 13. **Sample APK present** at `Static Code Analysis Module/input/APK/sample.apk` (11.9 MB).
