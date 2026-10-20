@@ -13,10 +13,10 @@ The six conditions mirror the plan verbatim:
     E - Code + PPG + PAcT
     F - Full evidence package (everything the KB + PPG + PAcT know)
 
-Provider abstraction is unchanged: any object with a `generate(prompt, evidence) -> str`
-method works. Downstream comparison is driven by which condition wins on
-BLEU / ROUGE / BERTScore / LLM-as-judge in Phase 15 and by the human ratings in Phase 15
-human eval.
+Any object with a `generate(prompt, evidence)` method returning a str works as a provider; a
+GenerationResult also carries token usage. Downstream comparison is driven by which condition
+wins on BLEU / ROUGE / BERTScore / LLM-as-judge in Phase 15 and by the human ratings in
+Phase 15 human eval.
 """
 from __future__ import annotations
 
@@ -162,12 +162,14 @@ def run_condition(rec: Dict[str, Any], condition: str, provider,
         model=getattr(provider, "model", ""),
         prompt=prompt,
         evidence=evidence,
-        caption=caption,
+        caption=str(caption),
         latency_seconds=round(elapsed, 4),
         prompt_chars=len(prompt),
         caption_chars=len(caption),
         temperature=temperature,
         error=error,
+        prompt_tokens=getattr(caption, "prompt_tokens", None),
+        completion_tokens=getattr(caption, "completion_tokens", None),
     )
 
 

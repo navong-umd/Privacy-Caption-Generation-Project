@@ -1,7 +1,7 @@
 """
 Purpose: Pluggable LLM provider interface for caption generation.
 Input:   a prompt string + a structured `evidence` dict (labels + code/taint facts).
-Output:  a 4-5 line human-readable privacy caption (str).
+Output:  a 4-5 line human-readable privacy caption (GenerationResult: str + token usage).
 
 The default `mock` provider is fully OFFLINE and deterministic (no network, no keys) so the
 pipeline and tests always run. Real providers (anthropic/openai/llama/deepseek) import their
@@ -36,18 +36,34 @@ _PURPOSE_PHRASE = {
 }
 
 
+class GenerationResult(str):
+    """Generated text plus the token usage the provider reported (0 when unknown).
+
+    A str subclass, so callers that only need the text are unaffected."""
+
+    prompt_tokens: int
+    completion_tokens: int
+
+    def __new__(cls, text: str, prompt_tokens: int = 0, completion_tokens: int = 0):
+        obj = super().__new__(cls, text)
+        obj.prompt_tokens = prompt_tokens
+        obj.completion_tokens = completion_tokens
+        return obj
+
+
 class LLMProvider:
     """Base provider: real providers override `generate`."""
 
-    def generate(self, prompt: str, evidence: Dict) -> str:
+    def generate(self, prompt: str, evidence: Dict) -> GenerationResult:
         raise NotImplementedError
 
 
 class MockProvider(LLMProvider):
     """Deterministic, offline caption generator (template over the evidence dict)."""
 
-    def generate(self, prompt: str, evidence: Dict) -> str:
-        pi = _PI_PHRASE.get(evidence.get("category", ""), evidence.get("pi_type") or "personal data")
+    def generate(self, prompt: str, evidence: Dict) -> GenerationResult:
+        category = evidence.get("pi_category") or evidence.get("category", "")
+        pi = _PI_PHRASE.get(category, evidence.get("pi_type") or "personal data")
         practice = evidence.get("practice", [])
         purpose = evidence.get("purpose", [])
         sink = _SINK_PHRASE.get(evidence.get("sink_type", ""), "an external destination")
@@ -68,7 +84,7 @@ class MockProvider(LLMProvider):
         threat = evidence.get("privacy_threat", "")
         if threat:
             lines.append(f"Privacy threat (LINDDUN): {threat}.")
-        return "\n".join(lines[:5])
+        return GenerationResult("\n".join(lines[:5]))
 
 
 class _ApiProvider(LLMProvider):
@@ -85,7 +101,7 @@ class _ApiProvider(LLMProvider):
                 f"Provider '{name}' needs env var {conf.get('api_key_env')} (no key set). "
                 f"Use provider: mock for offline runs.")
 
-    def generate(self, prompt: str, evidence: Dict) -> str:  # pragma: no cover (needs network/key)
+    def generate(self, prompt: str, evidence: Dict) -> GenerationResult:  # pragma: no cover (needs network/key)
         if self.name == "anthropic":
             import anthropic
             client = anthropic.Anthropic(api_key=self.key)
@@ -93,7 +109,8 @@ class _ApiProvider(LLMProvider):
                 model=self.model, max_tokens=self.gen.get("max_tokens", 220),
                 temperature=self.gen.get("temperature", 0.2),
                 messages=[{"role": "user", "content": prompt}])
-            return msg.content[0].text.strip()
+            return GenerationResult(msg.content[0].text.strip(),
+                                    msg.usage.input_tokens, msg.usage.output_tokens)
         # openai-compatible (openai / llama / deepseek via base_url)
         from openai import OpenAI
         client = OpenAI(api_key=self.key, base_url=self.base_url)
@@ -101,7 +118,9 @@ class _ApiProvider(LLMProvider):
             model=self.model, max_tokens=self.gen.get("max_tokens", 220),
             temperature=self.gen.get("temperature", 0.2),
             messages=[{"role": "user", "content": prompt}])
-        return resp.choices[0].message.content.strip()
+        usage = resp.usage
+        return GenerationResult(resp.choices[0].message.content.strip(),
+                                getattr(usage, "prompt_tokens", 0), getattr(usage, "completion_tokens", 0))
 
 
 def get_provider(cfg: Dict) -> LLMProvider:

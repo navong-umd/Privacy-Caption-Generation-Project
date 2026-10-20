@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 from step4_eval.caption_judge import (_heuristic_score, _heuristic_pairwise, judge_captions,
-                                       _extract_json, _to_score)
+                                       extract_json, _to_score)
 
 
 def test_extract_json_is_robust():
-    assert _extract_json('{"accuracy":4,"readability":5}') == {"accuracy": 4, "readability": 5}
+    assert extract_json('{"accuracy":4,"readability":5}') == {"accuracy": 4, "readability": 5}
     # embedded in prose with surrounding braces/text -> balanced scan still recovers it
-    assert _extract_json('Sure! {"accuracy":3,"readability":2} (done)') == {"accuracy": 3, "readability": 2}
-    assert _extract_json("no json here") is None
+    assert extract_json('Sure! {"accuracy":3,"readability":2} (done)') == {"accuracy": 3, "readability": 2}
+    assert extract_json("no json here") is None
 
 
 def test_to_score_coerces_and_clamps():

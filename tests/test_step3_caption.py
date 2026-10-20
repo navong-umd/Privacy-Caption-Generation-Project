@@ -21,6 +21,26 @@ def test_mock_provider_is_deterministic_and_grounded():
     assert "network" in a and "LINDDUN" in a
 
 
+def test_mock_reads_pi_category_and_reports_zero_usage():
+    out = MockProvider().generate("", {"pi_category": "LOCATION_INFORMATION", "practice": ["Collecting"]})
+    assert "location" in out
+    assert out.prompt_tokens == 0 and out.completion_tokens == 0
+
+
+def test_condition_result_carries_provider_usage():
+    from step3_caption.experiments import run_condition
+    from step3_caption.llm_interface import GenerationResult
+
+    class _Paid:
+        name, model = "paid", "m"
+
+        def generate(self, prompt, evidence):
+            return GenerationResult("caption", 120, 30)
+
+    res = run_condition({"prcs_id": "p", "code_snippet": "x"}, "A", _Paid())
+    assert (res.prompt_tokens, res.completion_tokens) == (120, 30) and type(res.caption) is str
+
+
 def test_get_provider_defaults_to_mock():
     assert isinstance(get_provider({"provider": "mock"}), MockProvider)
 

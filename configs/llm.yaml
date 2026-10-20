@@ -7,12 +7,15 @@ max_tokens: 220
 temperature: 0.2
 
 # Real providers read their key from the named environment variable (never hard-code keys).
+# price_in_per_mtok / price_out_per_mtok are USD per million input / output tokens. Commands with
+# --budget-usd (step2_dataset.llm_label) refuse a paid provider until both are filled in from its
+# pricing page; other commands bound cost with --limit / --per-app.
 providers:
   # sonnet is capable + far cheaper for high-volume captioning; bump to claude-opus-4-8 for max quality.
-  anthropic: {model: claude-sonnet-4-6, api_key_env: ANTHROPIC_API_KEY}
-  openai:    {model: gpt-4o,           api_key_env: OPENAI_API_KEY}
-  llama:     {model: llama-3-70b,      api_key_env: LLAMA_API_KEY, base_url_env: LLAMA_BASE_URL}
-  deepseek:  {model: deepseek-chat,    api_key_env: DEEPSEEK_API_KEY, base_url_env: DEEPSEEK_BASE_URL}
+  anthropic: {model: claude-sonnet-4-6, api_key_env: ANTHROPIC_API_KEY, price_in_per_mtok: null, price_out_per_mtok: null}
+  openai:    {model: gpt-4o,           api_key_env: OPENAI_API_KEY, price_in_per_mtok: null, price_out_per_mtok: null}
+  llama:     {model: llama-3-70b,      api_key_env: LLAMA_API_KEY, base_url_env: LLAMA_BASE_URL, price_in_per_mtok: null, price_out_per_mtok: null}
+  deepseek:  {model: deepseek-chat,    api_key_env: DEEPSEEK_API_KEY, base_url_env: DEEPSEEK_BASE_URL, price_in_per_mtok: null, price_out_per_mtok: null}
 
 # In-context learning examples shown to the model (used by real providers' prompt).
 icl_examples:

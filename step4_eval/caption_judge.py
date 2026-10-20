@@ -83,7 +83,7 @@ def _heuristic_pairwise(llm: str, base: str, f: Dict) -> str:
 
 
 # ---------- real LLM judge ----------
-def _extract_json(text: str) -> Optional[Dict]:
+def extract_json(text: str) -> Optional[Dict]:
     """Tolerant JSON extraction: whole-string first, then a brace-balanced scan."""
     if not text:
         return None
@@ -124,7 +124,7 @@ def _llm_score(provider, caption: str, f: Dict) -> Dict:  # pragma: no cover (ne
         "accuracy = how well the caption matches the facts; readability = how clear it is to a user.\n"
         f"facts: personal_data={f['pi']} practice={f['practice']} purpose={f['purpose']} sink={f['sink_type']}\n"
         f"caption: {caption}")
-    d = _extract_json(provider.generate(prompt, {})) or {}
+    d = extract_json(provider.generate(prompt, {})) or {}
     return {"accuracy": _to_score(d.get("accuracy")), "readability": _to_score(d.get("readability")),
             "faithful": bool(d.get("faithful", False))}
 
@@ -135,7 +135,7 @@ def _llm_pairwise(provider, a: str, b: str, f: Dict) -> str:  # pragma: no cover
         'for an end user? Reply ONLY JSON: {"winner":"A"|"B"}.\n'
         f"facts: personal_data={f['pi']} practice={f['practice']} purpose={f['purpose']} sink={f['sink_type']}\n"
         f"Caption A: {a}\nCaption B: {b}")
-    d = _extract_json(provider.generate(prompt, {})) or {}
+    d = extract_json(provider.generate(prompt, {})) or {}
     return "A" if str(d.get("winner", "A")).upper().startswith("A") else "B"
 
 
@@ -157,7 +157,7 @@ def judge_captions(dataset_dir: str, captions_dir: str, out_dir: str,
     if use_llm:
         from pplib.io_utils import load_dotenv
         from step3_caption.llm_interface import get_provider
-        load_dotenv()
+        load_dotenv(REPO_ROOT / ".env")
         cfg = load_yaml(llm_config or REPO_ROOT / "configs" / "llm.yaml")
         provider = get_provider({**cfg, "provider": provider_name})
 
