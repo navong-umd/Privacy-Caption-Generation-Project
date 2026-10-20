@@ -8,8 +8,8 @@ version = "0.4.0"
 description = "Android privacy-caption generation via APG → PPG → PRCS → RGCN → LLM (research prototype)"
 readme = "README.md"
 requires-python = "==3.14.*"
-authors = [{ name = "Ali Ferris" }]
-license = { text = "Research use only — see repository terms" }
+authors = [{ name = "Sambathchatovong Na" }, { name = "Ali Ferris" }]
+license = { text = "MIT" }
 classifiers = [
   "Programming Language :: Python :: 3.14",
   "Intended Audience :: Science/Research",
