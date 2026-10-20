@@ -128,7 +128,8 @@ Produces per-app `notice.md`, `policy.md`, `policy.json`.
 
 | Path | Purpose | Producer |
 |------|---------|----------|
-| `data/starter/` | Human-annotation starter package. `annotation_sheet.csv` (input) + `human_labels.json` + `dataset/` + `model/` + `prcs/`. Referenced by `run_g1g2.py --base data/starter`. | Assembled ad-hoc for G1/G2; upstream/downstream loose files under `data/` (`_annot_rows.json`, `_merged_labels.json`, `_review_shortlist.csv/md`) belong to this workflow. |
+| `data/starter/`, `data/eval_run/` | Early annotation packages. Their `human_labels.json` entries were assigned by a two-pass LLM process and are tagged `label_source: llm` (`python -m step2_dataset.ingest_annotations --retag-llm <file>`); they are not human labels. | Assembled ad-hoc; loose files under `data/` (`_annot_rows.json`, `_merged_labels.json`, `_review_shortlist.csv/md`) belong to this workflow. |
+| `data/annotation_kit/` | Two-annotator kit: calibration, overlap and solo sheets + `manifest.json` (test ids). | `python -m step2_dataset.make_annotation_sheet --dataset data/corpus_run/dataset --kit data/annotation_kit` |
 
 ---
 
