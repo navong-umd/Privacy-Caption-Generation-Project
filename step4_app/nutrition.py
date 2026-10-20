@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from pplib.io_utils import dump_json, ensure_dir, get_logger, load_yaml
-from pplib.schema import BANNER_BOOTSTRAP, PRACTICE_LABELS, PURPOSE_LABELS
+from pplib.schema import BANNER_BOOTSTRAP, PRACTICE_LABELS, PURPOSE_LABELS, is_gold
 
 log = get_logger("nutrition")
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -115,7 +115,7 @@ def build_nutrition(dataset_dir: str, captions_dir: str | None, out_dir: str,
     index = {"apps": {}, "banner": ""}
     any_weak = False
     for pkg, facts in _app_facts(records).items():
-        weak = any(f["label_source"] == "weak" for f in facts)
+        weak = any(not is_gold(f["label_source"]) for f in facts)
         any_weak = any_weak or weak
 
         collected = Counter(f["category"] for f in facts if f["category"])

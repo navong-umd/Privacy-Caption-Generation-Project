@@ -5,7 +5,7 @@ Input:   --dataset data/dataset (adppg.jsonl), --config configs/llm.yaml,
 Output:  data/captions/captions.json (+ captions.csv): LLM caption + Code2Seq baseline per PRCS.
 
 Provider defaults to the OFFLINE mock (no network/keys). Captions derived from WEAK labels
-inherit `label_source: weak` so downstream/eval can banner them.
+inherit their `label_source` (weak / llm / human) so downstream/eval can banner them.
 
 Run: python -m step3_caption.generate --dataset data/dataset --out data/captions
 """
@@ -19,7 +19,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from pplib.io_utils import dump_json, ensure_dir, get_logger, load_json, load_yaml
-from pplib.schema import BANNER_WEAK
+from pplib.schema import is_gold, label_banner
 from step3_caption.code2seq_baseline import BASELINE_TAG, Code2SeqBaseline
 from step3_caption.llm_interface import get_provider
 
@@ -110,7 +110,7 @@ def generate_captions(dataset_dir: str, out_dir: str, config: Optional[str] = No
             "caption": caption, "baseline_caption": baseline.caption(rec),
             "baseline_tag": BASELINE_TAG, "provider": cfg.get("provider", "mock"),
             "label_source": label_source,
-            "weak_banner": BANNER_WEAK if label_source == "weak" else "",
+            "weak_banner": label_banner(label_source),
         })
 
     out_p = ensure_dir(out_dir)
@@ -134,14 +134,13 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=None, help="cap total captions (bounds API cost)")
     args = ap.parse_args()
     if args.provider and args.provider != "mock":
-        from pplib.io_utils import load_dotenv
-        load_dotenv()                            # pull API keys from .env for real providers
+        from pplib.io_utils import REPO_ROOT, load_dotenv
+        load_dotenv(REPO_ROOT / ".env")          # pull API keys from .env for real providers
     caps = generate_captions(args.dataset, args.out, args.config, args.predictions,
                              provider=args.provider, per_app=args.per_app, limit=args.limit)
-    weak = any(c["label_source"] == "weak" for c in caps)
     print("\n=== Captions ===")
-    if weak:
-        print(f"  [{BANNER_WEAK}]")
+    for banner in sorted({label_banner(c["label_source"]) for c in caps if not is_gold(c["label_source"])}):
+        print(f"  [{banner}]")
     for c in caps[:3]:
         print(f"\n  {c['prcs_id']} ({c['app_package']}):")
         for line in c["caption"].splitlines():

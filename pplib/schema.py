@@ -46,6 +46,17 @@ LINDDUN_CATEGORIES = [
 ]
 
 # --- Banners: any artifact derived from heuristic/synthetic data MUST carry one ---
-BANNER_BOOTSTRAP = "BOOTSTRAP — not a real result (computed on WEAK/SYNTHETIC labels)"
+BANNER_BOOTSTRAP = "BOOTSTRAP — not a real result (test labels are WEAK, SYNTHETIC or LLM-assigned, not human)"
 BANNER_WEAK = "WEAK — not ground truth (heuristic auto-label, awaits human Codr annotation)"
+BANNER_LLM = "LLM — not ground truth (LLM-assigned label, awaits human verification)"
 BANNER_SYNTHETIC = "SYNTHETIC — generated fixture, not from a real APK"
+
+
+def is_gold(label_source: str) -> bool:
+    """Only human labels are ground truth; weak heuristics and LLM labels never are."""
+    return label_source == "human"
+
+
+def label_banner(label_source: str) -> str:
+    """Banner a label (or anything derived from it) must carry; empty for human labels."""
+    return {"human": "", "llm": BANNER_LLM}.get(label_source, BANNER_WEAK)

@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from pplib.io_utils import dump_json, ensure_dir, get_logger, load_json
-from pplib.schema import BANNER_BOOTSTRAP
+from pplib.schema import BANNER_BOOTSTRAP, is_gold
 from step4_eval.text_metrics import rouge_l, sentence_bleu
 
 log = get_logger("evaluate")
@@ -47,7 +47,7 @@ def evaluate_classification(dataset_dir: str, checkpoint: Optional[str]) -> Dict
 
     splits = load_splits(dataset_dir)
     test = splits["test"] or splits["val"] or splits["train"]
-    is_weak = any(getattr(g, "label_source", "weak") == "weak" for g in test)
+    is_weak = any(not is_gold(getattr(g, "label_source", "weak")) for g in test)
     ckpt = torch.load(ckpt_path, weights_only=False)
     model = ConvGNNClassifier(ckpt["config"])
     model.load_state_dict(ckpt["state_dict"])

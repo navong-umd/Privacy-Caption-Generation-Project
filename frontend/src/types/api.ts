@@ -1,7 +1,7 @@
 // Mirrors webapi/models.py. Keep in sync with the FastAPI response models.
 
 export interface Banner {
-  kind: "bootstrap" | "weak" | "judge" | "none";
+  kind: "bootstrap" | "weak" | "llm" | "judge" | "none";
   text: string;
 }
 

@@ -3,6 +3,7 @@ import type { Banner as BannerType } from "@/types/api";
 const TONE: Record<string, string> = {
   bootstrap: "border-warn-border bg-warn-soft text-warn",
   weak: "border-warn-border bg-warn-soft text-warn",
+  llm: "border-warn-border bg-warn-soft text-warn",
   judge: "border-accent-border bg-accent-soft text-accent",
   none: "border-line bg-surface text-muted",
 };
@@ -10,11 +11,12 @@ const TONE: Record<string, string> = {
 const ICON: Record<string, string> = {
   bootstrap: "▲",
   weak: "▲",
+  llm: "▲",
   judge: "◆",
   none: "•",
 };
 
-/** Honesty banner. Surfaces the BOOTSTRAP / LLM-JUDGED caveats the research carries. */
+/** Honesty banner. Surfaces the BOOTSTRAP / LLM-LABELED / LLM-JUDGED caveats the research carries. */
 export function Banner({ banner }: { banner: BannerType }) {
   if (!banner?.text) return null;
   return (

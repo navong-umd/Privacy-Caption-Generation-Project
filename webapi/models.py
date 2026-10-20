@@ -13,7 +13,7 @@ from pydantic import BaseModel
 # ---- shared ----
 
 class Banner(BaseModel):
-    kind: str            # "bootstrap" | "weak" | "judge" | "none"
+    kind: str            # "bootstrap" | "weak" | "llm" | "judge" | "none"
     text: str
 
 

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from pplib.io_utils import dump_json, ensure_dir, get_logger, load_yaml
-from pplib.schema import BANNER_WEAK
+from pplib.schema import label_banner
 
 log = get_logger("policy")
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -58,10 +58,10 @@ def _app_section_data(facts: List[dict], cmap: dict) -> dict:
     return {"collected": collected, "purposes": purposes, "shared_with": shared_with}
 
 
-def _render_notice(pkg: str, sec: dict, captions: List[str], weak: bool) -> str:
+def _render_notice(pkg: str, sec: dict, captions: List[str], banner: str) -> str:
     lines = [f"# Privacy Notice — {pkg}", ""]
-    if weak:
-        lines += [f"> **DRAFT — {BANNER_WEAK}**", ""]
+    if banner:
+        lines += [f"> **DRAFT — {banner}**", ""]
     lines += ["## What we collect", *([f"- {c}" for c in sec["collected"]] or ["- (none detected)"]), ""]
     lines += ["## How it is used",
               *([f"- {p}" for p in sec["purposes"]] or ["- (unspecified)"]), ""]
@@ -72,10 +72,10 @@ def _render_notice(pkg: str, sec: dict, captions: List[str], weak: bool) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _render_policy(pkg: str, sec: dict, reqs: dict, captions: List[str], weak: bool) -> str:
+def _render_policy(pkg: str, sec: dict, reqs: dict, captions: List[str], banner: str) -> str:
     lines = [f"# Privacy Policy — {pkg}", ""]
-    if weak:
-        lines += [f"> **DRAFT — {BANNER_WEAK}.** Not legal advice; verify before publishing.", ""]
+    if banner:
+        lines += [f"> **DRAFT — {banner}.** Not legal advice; verify before publishing.", ""]
     lines += ["## 1. Personal data we process",
               *([f"- {c}" for c in sec["collected"]] or ["- (none detected)"]), ""]
     lines += ["## 2. Purposes", *([f"- {p}" for p in sec["purposes"]] or ["- (unspecified)"]), ""]
@@ -111,14 +111,15 @@ def assemble(dataset_dir: str, captions_dir: str, out_dir: str,
     out = ensure_dir(out_dir)
     summary = {"apps": {}}
     for pkg, facts in by_app.items():
-        weak = any(f["label_source"] == "weak" for f in facts)
+        banner = "; ".join(sorted({label_banner(f["label_source"]) for f in facts} - {""}))
+        weak = bool(banner)
         sec = _app_section_data(facts, cmap)
         reqs = _collect_requirements(facts, cmap)
         caps = [captions[f["prcs_id"]]["caption"].replace("\n", " ")
                 for f in facts if f["prcs_id"] in captions]
         app_out = ensure_dir(out / pkg.replace("/", "_"))
-        (app_out / "notice.md").write_text(_render_notice(pkg, sec, caps, weak), encoding="utf-8")
-        (app_out / "policy.md").write_text(_render_policy(pkg, sec, reqs, caps, weak), encoding="utf-8")
+        (app_out / "notice.md").write_text(_render_notice(pkg, sec, caps, banner), encoding="utf-8")
+        (app_out / "policy.md").write_text(_render_policy(pkg, sec, reqs, caps, banner), encoding="utf-8")
         summary["apps"][pkg] = {"sections": sec, "requirements": reqs,
                                 "n_prcs": len(facts), "weak": weak}
     dump_json(summary, out / "policy.json")

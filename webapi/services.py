@@ -57,7 +57,13 @@ def build_banners() -> List[Dict[str, str]]:
     if er.get("bootstrap") or (er.get("classification", {}) or {}).get("is_weak"):
         banners.append({
             "kind": "bootstrap",
-            "text": "Classification metrics are computed on WEAK (heuristic) labels. Directional only until human annotation (Gate G1).",
+            "text": "Classification metrics are computed on test labels that are not human-annotated (heuristic or LLM-assigned). Directional only until human annotation (Gate G1).",
+        })
+    sources = Counter(v["label_source"] for v in loader.labels().values())
+    if sources["llm"]:
+        banners.append({
+            "kind": "llm",
+            "text": f"{sources['llm']} labels were assigned by an LLM, not a human annotator. They are not ground truth.",
         })
     ce = loader.caption_eval()
     if ce:
