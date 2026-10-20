@@ -17,7 +17,7 @@ def _isolated_env(monkeypatch):
 
 def test_missing_password_fails_with_the_variable_name():
     with pytest.raises(RuntimeError, match="NEO4J_PASSWORD"):
-        connection_settings({"uri": "bolt://db:7687", "user": "neo4j", "password": "password"})
+        connection_settings({"uri": "bolt://db:7687", "user": "neo4j", "password": "from-config"})
 
 
 def test_password_in_config_is_ignored(monkeypatch):
