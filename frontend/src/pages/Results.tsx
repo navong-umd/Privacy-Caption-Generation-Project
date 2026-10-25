@@ -170,7 +170,7 @@ export default function Results() {
       <Section
         eyebrow="Reproducibility"
         title="Experiment matrix"
-        description="The eight-arm comparison (code vs graph vs knowledge) and human evaluation are reserved for a budget-approved run. Numbers appear here only from real logged manifests."
+        description="The ten-arm comparison (graph, code tokens and knowledge overlay, baselines and caption conditions) and human evaluation are reserved for a budget-approved run. Numbers appear here only from real logged manifests."
       >
         {exp.isLoading ? (
           <LoadingRows rows={2} />

@@ -101,7 +101,7 @@ Both heads are multi-label: one flow can be, for example, both *Collecting* and 
 | [`webapi/`](webapi/), [`frontend/`](frontend/) | Read-only FastAPI research API and React + Vite front end (see [WEBSITE.md](WEBSITE.md)) | working |
 | [`step4_eval/`](step4_eval/) | Classification metrics, text metrics, grounding and LLM-judge harness | partial: human reference data pending |
 | [`step4_userstudy/`](step4_userstudy/) | Blind rating packet and ratings ingest | partial: blinding fixes and statistical tests planned |
-| [`pplib/`](pplib/) | Shared schema, PAcT label schema, experiment manifests, experiment matrix definition | partial: matrix runner planned |
+| [`pplib/`](pplib/) | Shared schema, PAcT label schema, experiment manifests, the experiment matrix and its runner, test-set lock | working |
 | [`pipeline/`](pipeline/) | One command per APK (`run_pipeline`) or per corpus (`run_corpus`) | working |
 | [`configs/`](configs/) | Editable YAML for the knowledge base, taint, model, LLM, weak labels, GDPR/CCPA map; Cypher library and Neo4j styling | working |
 | [`data/knowledge_base/`](data/knowledge_base/) | SuSi source/sink lists and the API-to-personal-information table | working |
@@ -219,9 +219,9 @@ The evaluation methodology is fixed in the repository. **Results are pending** u
 | LLM captions, grounding check, GDPR/CCPA notice | implemented |
 | Privacy Nutrition Facts site and research web app | implemented |
 | Label provenance (human vs LLM vs weak) and annotation kit | in progress |
-| Captions conditioned on the RGCN's predicted labels | planned |
+| Captions conditioned on the RGCN's predicted labels | implemented |
 | Human PAcT annotation, 400 flows, two annotators | planned |
-| Experiment matrix with seeds, intervals and baselines | planned |
+| Experiment matrix with seeds, intervals and baselines | implemented, awaits the locked human test split |
 | Blind expert caption rating | planned |
 | Public web deployment and GitHub Pages site | planned |
 | IRB developer study | planned |

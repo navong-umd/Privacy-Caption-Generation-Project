@@ -30,7 +30,7 @@ Numbers are not in this index. Numbers live only in `manifest.json` files under 
 21. [RESEARCH_APP.md](RESEARCH_APP.md) — Nutrition Facts app and human study kit.
 22. [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) — reproducible run manifests.
 23. [PERFORMANCE.md](PERFORMANCE.md) — timing and memory measurement.
-24. [FINAL_EXPERIMENTS.md](FINAL_EXPERIMENTS.md) — the eight-arm final matrix.
+24. [FINAL_EXPERIMENTS.md](FINAL_EXPERIMENTS.md) — the ten-arm final matrix and its runner.
 25. [RESULTS.md](RESULTS.md) — numbers, once the runs happen.
 26. [LIMITATIONS.md](LIMITATIONS.md) — what remains unresolved.
 

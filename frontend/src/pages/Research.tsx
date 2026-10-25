@@ -11,7 +11,7 @@ const QUESTIONS = [
   },
   {
     q: "Which part of the graph carries the signal?",
-    a: "Isolating the contribution of program structure, the knowledge-base overlay, and code tokens through an eight-arm ablation.",
+    a: "Isolating the contribution of program structure, the knowledge-base overlay, and code tokens through a ten-arm experiment matrix.",
   },
   {
     q: "Which evidence yields the best caption?",

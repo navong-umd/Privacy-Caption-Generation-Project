@@ -1,4 +1,4 @@
-# LLM Experiments (A through F)
+# LLM Experiments (A through G)
 
 _Phase 14 deliverable. Builds on [CAPTION_GENERATION.md](CAPTION_GENERATION.md), [PRCS_SCHEMA.md](PRCS_SCHEMA.md), and [KNOWLEDGE_BASE.md](KNOWLEDGE_BASE.md). Implementation in [`step3_caption/experiments.py`](../step3_caption/experiments.py); tests in [`tests/test_llm_experiments.py`](../tests/test_llm_experiments.py)._
 
@@ -8,7 +8,7 @@ Phase 14 lands the harness (condition builders + a provider-agnostic runner that
 
 ---
 
-## 1. The six conditions
+## 1. The conditions
 
 | Condition | Label | Sees | Everything above plus... |
 |-----------|-------|------|--------------------------|
@@ -18,10 +18,11 @@ Phase 14 lands the harness (condition builders + a provider-agnostic runner that
 | D | `code_plus_ppg` | + subgraph shape, involved methods | structural context |
 | E | `code_plus_ppg_plus_pact` | + PI category / type / permission / sink type / privacy threat / practice / purpose | KB + labels |
 | F | `full_evidence` | + `app_package`, `apk_filename`, `class_name`, `method_name` | app identity |
+| G | `code_plus_taint_path_plus_predicted_pact` | C + `practice` / `purpose` **predicted** by the classifier | predicted labels |
 
 The conditions are monotone by design: every condition strictly extends the previous. That keeps the ablation interpretable: if F > A, we know where the delta came from because each intermediate condition is scored too.
 
-Note that C branches off B (skips PPG) and E branches off D (skips taint path); F is the union of everything. That matches the plan's ladder rather than a strict chain, so tests assert absence of the fields each condition is supposed to omit.
+Note that C branches off B (skips PPG) and E branches off D (skips taint path); F is the union of everything. G is C plus PAcT labels passed in by the caller (`build_evidence(rec, "G", predicted=...)`); it never reads `rec["labels"]` and refuses to run without predictions. The experiment matrix uses A, B, C and G as its caption arms (see [FINAL_EXPERIMENTS.md](FINAL_EXPERIMENTS.md)), with G fed by the `ppg_code` seed-0 predictions. That matches the plan's ladder rather than a strict chain, so tests assert absence of the fields each condition is supposed to omit.
 
 ---
 
@@ -31,7 +32,7 @@ The runner takes any object with `generate(prompt, evidence) -> str`. It reads t
 
 `step3_caption/llm_interface.py::MockProvider` and `RealProvider` already conform. Users plug in Anthropic, OpenAI, or a stub as needed.
 
-A provider error is captured (`ConditionResult.error`) instead of raised, so one bad row does not sink a corpus-wide sweep. Downstream analysis filters on `error == ""`.
+A provider error is captured (`ConditionResult.error`) instead of raised, so one bad row does not sink a corpus-wide sweep. Downstream analysis filters on `error == ""`. Passing a `step3_caption.budget.Budget` as `run_condition(..., budget=...)` caps spend: a call the budget refuses is not made and its error is `BUDGET_REFUSED`.
 
 ---
 
@@ -61,13 +62,16 @@ Cost caps for real-provider sweeps live in `configs/llm.yaml` (`--per-app`, `--l
 
 ## 5. Invariants tested
 
-- `CONDITIONS == ("A", "B", "C", "D", "E", "F")`.
+- `CONDITIONS == ("A", "B", "C", "D", "E", "F", "G")`.
 - `A` exposes exactly `{prcs_id, code_snippet}`.
 - `B` adds APIs and nothing else.
 - `C` adds taint path and hop count, no PPG, no PAcT.
 - `D` adds subgraph shape + involved methods, no PAcT, no taint path.
 - `E` adds PAcT + KB fields, no taint path.
 - `F` is the union of all fields.
+- `G` equals `C` plus the predicted `practice` / `purpose`, never reads `rec["labels"]`, and raises without predictions.
+- `run_all_conditions` includes `G` only when predictions are given.
+- With a budget, a second call that would cross the limit is not made.
 - Unknown condition raises `ValueError`.
 - Prompt is stable across repeat calls with the same evidence.
 - `run_condition` never raises; provider errors become populated `error` strings.

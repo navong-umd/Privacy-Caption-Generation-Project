@@ -1,136 +1,69 @@
 # Final Experiments Matrix
 
-_Phase 21 deliverable. Companion to [BASELINES.md](BASELINES.md), [FUSION_ABLATION.md](FUSION_ABLATION.md), [LLM_EXPERIMENTS.md](LLM_EXPERIMENTS.md), and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md). Matrix in [`pplib/experiment_matrix.py`](../pplib/experiment_matrix.py); tests in [`tests/test_experiment_matrix.py`](../tests/test_experiment_matrix.py). This document does not contain numbers; numbers come only from real runs saved under `experiments/EXP???/manifest.json`._
-
-The plan's eight comparison arms, pinned in one place, plus a stub assembler that refuses to invent metrics.
+_Companion to [BASELINES.md](BASELINES.md), [FUSION_ABLATION.md](FUSION_ABLATION.md), [LLM_EXPERIMENTS.md](LLM_EXPERIMENTS.md) and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md). Matrix in [`pplib/experiment_matrix.py`](../pplib/experiment_matrix.py), runner in [`pplib/run_matrix.py`](../pplib/run_matrix.py), statistics in [`pplib/matrix_stats.py`](../pplib/matrix_stats.py), test-set lock in [`pplib/testset.py`](../pplib/testset.py); tests in `tests/test_experiment_matrix.py`, `tests/test_run_matrix.py` and `tests/test_matrix_stats.py`. This document contains no numbers; numbers come only from `experiments/EXPnnn/manifest.json`._
 
 ---
 
-## 1. The eight arms
+## 1. The ten arms
 
-`FINAL_ARMS` in `pplib/experiment_matrix.py`, verbatim from the plan:
+`pplib/experiment_matrix.py` is the only arm list. `step2_convgnn/arms.py` derives its RGCN arms from it. Every arm has a fixed experiment id, so a rerun updates the same manifest.
 
-| # | Arm | Task | What it sees |
-|---|-----|------|-------------|
-| 1 | `code` | captions (LLM condition A) | Code snippet only. |
-| 2 | `code_api` | captions (LLM condition B) | Code + source / sink API strings. |
-| 3 | `code_taint` | captions (LLM condition C) | Code + taint path + per-hop rules. |
-| 4 | `apg` | classification (RGCN) | Structure + node-type embedding only. |
-| 5 | `ppg` | classification (RGCN) | + PPG privacy overlay from the KB. |
-| 6 | `ppg_code` | classification (RGCN) | + statement-token hashing trick. |
-| 7 | `ppg_knowledge` | classification (RGCN) | Same as `ppg`, kept because the plan names it. |
-| 8 | `ppg_code_knowledge` | classification (RGCN) | Everything. |
+| Id | Arm | Task | Definition | Replication |
+|---|---|---|---|---|
+| EXP001 | `apg` | classification | `privacy_features=False, token_features=False` | 5 seeds |
+| EXP002 | `apg_code` | classification | `False, True` | 5 seeds |
+| EXP003 | `ppg` | classification | `True, False` | 5 seeds |
+| EXP004 | `ppg_code` | classification | `True, True` (full model) | 5 seeds |
+| EXP005 | `rule` | baseline | `step3_caption.baselines.RuleBaseline` | deterministic, 1 run |
+| EXP006 | `tfidf` | baseline | `step3_caption.baselines.TfIdfBaseline` | deterministic, 1 run |
+| EXP007 | `cap_code` | captions | condition A, code only (PCapGen-style input, an approximation, not a reimplementation) | 1 run on the rating sample |
+| EXP008 | `cap_code_api` | captions | condition B, code + source/sink APIs | same |
+| EXP009 | `cap_code_taint` | captions | condition C, code + taint path | same |
+| EXP010 | `cap_code_taint_pred` | captions | condition G: C + PAcT labels **predicted** by `ppg_code` seed 0 | same |
 
-Arms 1 to 3 exercise the LLM caption harness (Phase 14 conditions). Arms 4 to 8 exercise the RGCN classifier (Phase 12 fusion knobs plus an APG-only baseline).
+The four classification arms are a 2x2 over the two featurizer flags of `step2_convgnn.data.record_to_data`: `privacy_features` (the PPG privacy overlay from the knowledge base) and `token_features` (the statement-token hashing trick). The earlier `ppg_knowledge` arm is gone: its features would have come from the same `sdk_catalog.yaml` that generates the weak purpose labels.
 
-The matrix spans both tasks on purpose. Reporting them side by side is what lets a reader see whether the caption story tracks the classification story.
-
----
-
-## 2. Mapping to existing knobs
-
-Nothing here is a new configuration. Every arm reuses knobs already defined in earlier phases:
-
-- Caption arms map onto `step3_caption.experiments.build_evidence(rec, condition)`. `code` -> A, `code_api` -> B, `code_taint` -> C.
-- Classification arms map onto `step2_convgnn.data.record_to_data(rec, privacy_features=?, token_features=?)`. See table:
-
-| Arm | `privacy_features` | `token_features` |
-|-----|---------------------|-------------------|
-| `apg` | False | False |
-| `ppg` | True | False |
-| `ppg_code` | False | True |
-| `ppg_knowledge` | True | False |
-| `ppg_code_knowledge` | True | True |
-
-`ppg` and `ppg_knowledge` share flags. That is intentional: the plan names them separately so a reader can see the KB overlay contribution in isolation; the RGCN featurization does not distinguish them because the KB signal already IS the PPG overlay in the featurizer. If a future arm splits them (e.g. an ablation that toggles individual PI fields), the flag map is where that lives.
+Condition G reads its labels from `EXP004/seed_0/predictions.jsonl` and never from `rec["labels"]`; `build_evidence(rec, "G")` refuses to run without them. It measures the pipeline as deployed, not an oracle.
 
 ---
 
-## 3. The assembler
+## 2. Replication and statistics
 
-`plan_runs(dataset_digest, config_digest, code_version, seed=13, provider="mock", start_from=1)` returns one `ExperimentRun` stub per arm. Each stub has:
-
-- Stable `exp_id` in the canonical order (`EXP001` through `EXP008` by default).
-- Populated identity fields (name, code_version, config_digest, dataset_digest, seed).
-- **Empty** `metrics` and `artifacts`.
-- A `notes` string that names the arm, the task, and the provider.
-
-**Metrics are never pre-populated.** The plan's honesty rule is:
-
-> Never claim it as a result until the experiments support it.
-
-`plan_runs` refuses to invent numbers. Actually running the matrix belongs to a real compute job with a budget approval; the stubs are the plan that job executes.
-
-Default provider is `mock`. Caption arms with `provider="mock"` produce deterministic template output at no cost; only a budget-approved run overrides that to `anthropic` or `openai` explicitly.
+- **Classification arms.** Five seeds (`SEEDS = (0, 1, 2, 3, 4)`, passed to `train(..., seed=s)`). Metrics come from `train()`'s return value at a fixed 0.5 threshold; nothing re-scores a model with a different featurization. The manifest reports every seed's metrics and, for macro-F1, per-head macro-F1 and micro-F1, the mean with a 95% t-interval.
+- **Baselines.** Fit on the train split, one deterministic run on the test split, with a 95% percentile item-bootstrap interval (2,000 draws).
+- **Comparison.** Every classification and baseline arm reports a paired item bootstrap (2,000 draws, same resampled items for both) of macro-F1 against `ppg_code` seed 0: the observed delta, a 95% interval and a two-sided bootstrap p-value. For `ppg_code` itself the delta is 0 by construction.
+- **Labels without positives.** Macro-F1 follows `step2_convgnn.metrics` (sklearn, `zero_division=0`): a label with no gold and no predicted positives scores 0 and still counts in the macro. Each manifest lists `label_support` so a reader can see which labels have no support (Advertisement currently has none in the training split).
+- **Captions.** Only the 60-item rating sample, drawn once with a fixed seed from the locked test ids and written to `experiments/RATING_SAMPLE.json` (ids, seed, test-set digest). Quality ratings and grounding rates are added in Phase 4.
 
 ---
 
-## 4. How to actually run one arm
+## 3. Running it
 
-Pattern (not wired into a driver; the runner is per-arm because compute cost differs):
+```bash
+# exercise every arm on weak labels; writes data/scratch_experiments/, never experiments/
+python -m pplib.run_matrix --dry-run --dataset data/corpus_run/dataset
 
-```python
-from pplib.experiment import ExperimentRun, current_code_version, digest_configs, digest_dataset, save_experiment
-from pplib.experiment_matrix import arm_spec, plan_runs
-
-dataset_dir = "data/corpus_run/dataset"
-configs = ["configs/ppg.yaml", "configs/sinks.yaml", "configs/convgnn.yaml",
-           "configs/llm.yaml", "configs/weak_labels.yaml", "configs/sdk_catalog.yaml"]
-
-stubs = plan_runs(
-    dataset_digest=digest_dataset(dataset_dir),
-    config_digest=digest_configs(configs),
-    code_version=current_code_version(),
-)
-
-# For a classification arm:
-spec = arm_spec("ppg_code_knowledge")
-# call step2_convgnn.train.train(...) with the flags in spec.flags,
-# fill stub.metrics with practice_macro_f1 / purpose_macro_f1 / micro_f1 / ...
-# fill stub.artifacts with the paths under experiments/EXP008/.
-# then save_experiment(stub, "experiments").
-
-# For a caption arm:
-spec = arm_spec("code")
-# call step3_caption.experiments.run_condition(rec, spec.condition, provider)
-# for the test-split PRCS, run step4_eval.aggregate.aggregate(...) to get metrics,
-# fill stub.metrics + stub.artifacts, save_experiment(stub, "experiments").
+# lock the human-labeled test split once (Phase 2), then the reported run
+python -m pplib.testset --dataset data/corpus_run/dataset
+python -m pplib.run_matrix --dataset data/corpus_run/dataset --provider anthropic --budget-usd 3
 ```
 
-Each concrete runner lives close to the code it exercises. This module is only the plan.
+- `--arms` runs only the named arms (space or comma separated); other manifests are untouched.
+- An arm whose manifest and outputs exist for the current test split is skipped. Per-seed `predictions.jsonl` / `test_metrics.json` and per-item caption rows are reused when present, so a rerun retrains nothing that already finished and makes no caption call for an item already captioned.
+- `--force` recomputes the named arms from scratch, including new caption calls.
+- `--budget-usd` caps caption spend for the whole run through `step3_caption.budget.Budget` (default 0, which still allows the free offline mock). A call whose upper-bound cost would cross the cap is not made; the arm's manifest records calls, tokens, spend (cumulative across resumed runs, plus `this_run`) and `stopped_by_budget`. Rerunning with a larger cap continues where it stopped.
+- A real run refuses to start unless `<experiments-root>/TEST_SET.json` matches `digest_test_set` of the current test split (sorted test ids with their labels and label sources, so train-side rebuilds do not change it). `--dry-run` skips that check and forces the root to `data/scratch_experiments/`.
+
+Each manifest carries its fixed `exp_id`, the test-set digest, the config digest, dataset digest, code version, seeds, banner and artifact paths. Caption rows hold no prompt or evidence, so no decompiled code lands in `experiments/`.
 
 ---
 
-## 5. Fair-comparison discipline
+## 4. Fair-comparison discipline
 
-Same test split. Same seed. Same PRCS records. Different only in the featurization / condition the arm dictates. If any of the following differ between two arms, the comparison is invalid:
-
-- `dataset_digest`.
-- `config_digest` (except for the ONE config the arm changes).
-- `seed`.
-- Underlying weights of the RGCN (arms 4 to 8 must retrain from the same init).
-- Underlying provider + model for caption arms (arms 1 to 3 must use the same provider and same prompt template beyond the evidence subset).
-
-The `ExperimentRun.notes` field is where any intentional exception gets recorded.
+Same test split, same records, same configs. Arms differ only in the featurization, baseline or caption condition the table names. Caption arms use the same provider, model and prompt template apart from the evidence subset. Any intentional exception goes in the manifest `notes`.
 
 ---
 
-## 6. Banners and honesty
+## 5. Banners and honesty
 
-Every `manifest.json` produced from these arms MUST carry the applicable banner:
-
-- `BANNER_BOOTSTRAP` when the test split still runs on weak labels.
-- `BANNER_JUDGE` when caption quality is scored by an LLM judge.
-- Any human-eval numbers appear only after the final human-eval gate.
-
-`RESULTS.md` in Phase 22 renders per-arm rows from `experiments/index.jsonl`. It does not average across banners or hide them.
-
----
-
-## 7. What Phase 21 explicitly did NOT do
-
-- Did not execute any arm. Real runs need budget approval and dedicated compute; the matrix is the plan those runs follow.
-- Did not fabricate numbers. `metrics == {}` on every stub. Trying to render `RESULTS.md` today shows the plan, not results.
-- Did not fold BERTScore into the caption metrics list. It is still a Phase 15 gap (torch dependency); when it lands, the caption arms grow one more column.
-- Did not split `ppg_knowledge` from `ppg` in the flag table. The plan names them separately; the featurizer does not. If a future ablation isolates individual KB fields, `_CLASSIFICATION_FLAGS` is where the new mapping lives.
-- Did not add a `--budget-approved` flag to the concrete runners. That approval is a human review, not a config toggle.
+Every manifest carries `BANNER_BOOTSTRAP` while any test label is not `human`, so the dry run on weak labels keeps its banners. The reported run on the locked human split carries none. `research/RESULTS.md` is rendered from `experiments/` and never averages across banners.
