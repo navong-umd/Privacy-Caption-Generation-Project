@@ -5,8 +5,10 @@ Input:   --a / --b labels files from the two annotators' overlap sheets (ingest_
          optional --sheet + --disagreements to write the items the annotators disagree on.
 Output:  --out JSON + .md: Cohen's kappa per PAcT label, macro kappa per head, raw agreement.
 
-A label that both raters marked identically on every item (e.g. never Advertisement) has no
-defined kappa; it is reported as undefined with its prevalence and left out of the head macro.
+Agreement on not_personal (the flow carries no personal data) is reported over every shared item;
+PAcT kappa is computed only on items both raters judged personal. A label that both raters marked
+identically on every item has no defined kappa; it is reported as undefined with its prevalence
+and left out of the head macro.
 Resolve the disagreement sheet, then ingest it with `--annotator adjudicated --merge`.
 
 Run: python -m step2_dataset.agreement --a kit/overlap_ali.json --b kit/overlap_labmate.json \
@@ -31,27 +33,44 @@ HEADS = (("practice", PRACTICE_LABELS), ("purpose", PURPOSE_LABELS))
 
 
 def _same_labels(x: dict, y: dict) -> bool:
-    return x["practice"] == y["practice"] and x["purpose"] == y["purpose"]
+    return (x["practice"] == y["practice"] and x["purpose"] == y["purpose"]
+            and x.get("not_personal", False) == y.get("not_personal", False))
+
+
+def _binary_agreement(ya: List[int], yb: List[int]) -> Dict:
+    """Raw agreement, prevalence and Cohen's kappa (undefined when both raters are constant)."""
+    n = len(ya)
+    entry = {"raw_agreement": round(sum(a == b for a, b in zip(ya, yb)) / n, 4),
+             "prevalence": round((sum(ya) + sum(yb)) / (2 * n), 4)}
+    if len(set(ya) | set(yb)) < 2:
+        entry.update({"kappa": None, "undefined": True})
+    else:
+        entry.update({"kappa": round(float(cohen_kappa_score(ya, yb)), 4), "undefined": False})
+    return entry
 
 
 def pairwise(x: Dict[str, dict], y: Dict[str, dict]) -> Dict:
-    """Agreement between two labels files on the items both labeled."""
+    """Agreement between two labels files on the items both labeled.
+
+    not_personal is scored on every shared item; PAcT labels only on items both raters judged to
+    carry personal data, so agreeing that a flow is not personal does not inflate PAcT kappa."""
     ids = sorted(set(x) & set(y))
-    out: Dict = {"n_items": len(ids), "labels": {}, "macro_kappa": {}, "defined_labels": {},
-                 "exact_match": None}
+    out: Dict = {"n_items": len(ids), "not_personal": None, "n_personal_items": 0, "labels": {},
+                 "macro_kappa": {}, "defined_labels": {}, "exact_match": None}
     if not ids:
         return out
+    out["not_personal"] = _binary_agreement([int(x[i].get("not_personal", False)) for i in ids],
+                                            [int(y[i].get("not_personal", False)) for i in ids])
+    personal = [i for i in ids if not x[i].get("not_personal") and not y[i].get("not_personal")]
+    out["n_personal_items"] = len(personal)
     for head, names in HEADS:
         defined = []
         for name in names:
-            ya = [int(name in x[i][head]) for i in ids]
-            yb = [int(name in y[i][head]) for i in ids]
-            raw = sum(a == b for a, b in zip(ya, yb)) / len(ids)
-            entry = {"raw_agreement": round(raw, 4), "prevalence": round((sum(ya) + sum(yb)) / (2 * len(ids)), 4)}
-            if len(set(ya) | set(yb)) < 2:
-                entry.update({"kappa": None, "undefined": True})
-            else:
-                entry.update({"kappa": round(float(cohen_kappa_score(ya, yb)), 4), "undefined": False})
+            if not personal:
+                break
+            entry = _binary_agreement([int(name in x[i][head]) for i in personal],
+                                      [int(name in y[i][head]) for i in personal])
+            if not entry["undefined"]:
                 defined.append(entry["kappa"])
             out["labels"][f"{head}_{name}"] = entry
         out["macro_kappa"][head] = round(sum(defined) / len(defined), 4) if defined else None
@@ -67,9 +86,10 @@ def disagreement_rows(sheet_csv: str, a: Dict[str, dict], b: Dict[str, dict]) ->
         pid = r["prcs_id"]
         if pid not in a or pid not in b or _same_labels(a[pid], b[pid]):
             continue
-        row = {**r, **{c: "" for c in PRACTICE_COLS + PURPOSE_COLS}, "annotator": "", "confidence": "", "notes": ""}
+        row = {**r, **{c: "" for c in PRACTICE_COLS + PURPOSE_COLS},
+               "not_personal": "", "annotator": "", "confidence": "", "notes": ""}
         for tag, lab in (("a", a[pid]), ("b", b[pid])):
-            row[f"{tag}_practice"] = "|".join(lab["practice"])
+            row[f"{tag}_practice"] = "not personal" if lab.get("not_personal") else "|".join(lab["practice"])
             row[f"{tag}_purpose"] = "|".join(lab["purpose"])
         rows.append(row)
     return rows
@@ -78,9 +98,12 @@ def disagreement_rows(sheet_csv: str, a: Dict[str, dict], b: Dict[str, dict]) ->
 def _render_md(report: Dict) -> str:
     lines = ["# Inter-annotator agreement", ""]
     for pair, res in report["pairs"].items():
-        lines += [f"## {pair} ({res['n_items']} items)", "",
-                  f"Macro kappa: practice {res['macro_kappa'].get('practice')}, purpose {res['macro_kappa'].get('purpose')}. "
-                  f"Exact match: {res['exact_match']}.", "",
+        np_ = res["not_personal"] or {}
+        lines += [f"## {pair} ({res['n_items']} items, {res['n_personal_items']} judged personal by both)", "",
+                  f"Not-personal kappa: {'undefined' if np_.get('undefined') else np_.get('kappa')} "
+                  f"(raw agreement {np_.get('raw_agreement')}, prevalence {np_.get('prevalence')}).", "",
+                  f"Macro kappa on personal items: practice {res['macro_kappa'].get('practice')}, "
+                  f"purpose {res['macro_kappa'].get('purpose')}. Exact match: {res['exact_match']}.", "",
                   "| Label | Kappa | Raw agreement | Prevalence |", "|---|---|---|---|"]
         for name, e in res["labels"].items():
             k = "undefined" if e["undefined"] else e["kappa"]

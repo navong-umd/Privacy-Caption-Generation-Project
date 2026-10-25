@@ -69,6 +69,20 @@ def test_pinned_test_app_and_cap(dataset_dir, tmp_path):
     assert splits["train"] and splits["val"]                     # other apps fill train/val
 
 
+def test_several_pinned_test_apps(dataset_dir, tmp_path):
+    """A comma-separated test_app holds out all of those apps and none of the others."""
+    from step2_dataset.build_dataset import build_dataset
+    recs = [json.loads(l) for l in (dataset_dir / "adppg.jsonl").read_text().splitlines()]
+    apps = sorted({r["app_package"] for r in recs})[:3]
+    out = tmp_path / "ds_multi"
+    build_dataset(str(dataset_dir.parent / "prcs"), str(out), test_app=",".join(apps))
+    splits = load_json(out / "splits.json")
+    id2app = {json.loads(l)["prcs_id"]: json.loads(l)["app_package"]
+              for l in (out / "adppg.jsonl").read_text().splitlines()}
+    assert {id2app[i] for i in splits["test"]} == set(apps)
+    assert not set(apps) & {id2app[i] for i in splits["train"] + splits["val"]}
+
+
 def test_dataset_splits_are_leakage_free(dataset_dir):
     records = {json.loads(l)["prcs_id"]: json.loads(l)
                for l in (dataset_dir / "adppg.jsonl").read_text().splitlines()}

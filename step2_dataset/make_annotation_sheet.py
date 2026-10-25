@@ -34,7 +34,7 @@ META_COLS = ["prcs_id", "app_package", "class_name", "method_name", "source_api"
 SHEET_COLUMNS = META_COLS + PRACTICE_COLS + PURPOSE_COLS
 # Two-annotator kit sheets: no weak-label columns (avoids anchoring) plus provenance columns.
 KIT_COLUMNS = ([c for c in META_COLS if not c.startswith("weak_")] + PRACTICE_COLS + PURPOSE_COLS
-               + ["annotator", "confidence", "notes"])
+               + ["not_personal", "annotator", "confidence", "notes"])
 
 # Weak-labeler purpose classes that are rare in real corpora; worth forcing into the sample so G1
 # annotators actually see (and correct) them instead of labeling an all-"Functionality" set.
@@ -89,7 +89,7 @@ def _row(r: dict, prefill: bool = False) -> dict:
         "class_name": r.get("class_name", ""), "method_name": r.get("method_name", ""),
         "source_api": r.get("source_api", ""), "sink_api": r.get("sink_api", ""),
         "sink_type": r.get("sink_type", ""), "pi_type": r.get("pi_type", ""),
-        "snippet": (r.get("code_snippet", "") or "").replace("\n", " ")[:300],
+        "snippet": (r.get("code_snippet", "") or "").replace("\n", " | ")[:1500],
         "weak_practice": "|".join(wp), "weak_purpose": "|".join(wu),
     }
     for l in PRACTICE_LABELS:

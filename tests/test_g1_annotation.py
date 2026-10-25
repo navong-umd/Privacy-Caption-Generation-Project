@@ -178,3 +178,21 @@ def test_retag_llm_marks_only_untagged_entries(tmp_path):
     out = load_json(p)
     assert out["prcs_old"]["label_source"] == "llm" and out["prcs_new"]["label_source"] == "human"
     validate_label(out["prcs_old"])
+
+
+def test_not_personal_rows_ingest_without_labels(dataset_dir, tmp_path):
+    make_kit(str(dataset_dir), str(tmp_path / "kit"), seed=0, n_calibration=2, n_overlap=2, n_solo=2)
+    sheet = tmp_path / "kit" / "solo_ali.csv"
+    rows = list(csv.DictReader(sheet.open(encoding="utf-8")))
+    rows[0]["not_personal"] = "1"
+    rows[1].update({"not_personal": "1", "P_Sharing": "1"})
+    with sheet.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=KIT_COLUMNS)
+        w.writeheader(); w.writerows(rows[:1])
+    entry = ingest_sheet(str(sheet), str(tmp_path / "l.json"))[rows[0]["prcs_id"]]
+    assert entry["not_personal"] is True and entry["practice"] == entry["purpose"] == []
+    with sheet.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=KIT_COLUMNS)
+        w.writeheader(); w.writerows(rows[1:2])
+    with pytest.raises(ValueError, match="not_personal"):
+        ingest_sheet(str(sheet), str(tmp_path / "l2.json"))

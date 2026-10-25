@@ -2,7 +2,8 @@
 Purpose: G1 helper - convert a filled annotation sheet into a labels file (human_labels.json).
 Input:   --sheet annotation_sheet.csv (P_*/U_* columns marked, plus annotator/confidence/notes),
          --out human_labels.json, [--annotator NAME] [--merge].
-Output:  {prcs_id: {practice, purpose, label_source, annotator, confidence, notes, schema_version}}.
+Output:  {prcs_id: {practice, purpose, label_source, annotator, confidence, notes, schema_version,
+         not_personal (only when the annotator marked the flow as carrying no personal data)}}.
 
 Only rows with at least one label marked are emitted (unmarked PRCS keep their weak label).
 Every row needs an annotator (sheet column or --annotator) and is validated against the PAcT
@@ -42,7 +43,11 @@ def ingest_sheet(sheet_csv: str, out_json: str, annotator: Optional[str] = None,
     for r in rows:
         practice = [l for l in PRACTICE_LABELS if _marked(r.get(f"P_{l}"))]
         purpose = [l for l in PURPOSE_LABELS if _marked(r.get(f"U_{l}"))]
-        if not (practice or purpose):                    # skip unannotated rows
+        not_personal = _marked(r.get("not_personal"))
+        if not_personal and (practice or purpose):
+            raise ValueError(f"{sheet_csv}: row {r['prcs_id']} is marked not_personal and also has "
+                             "PAcT labels; leave the P_/U_ columns blank for non-personal flows")
+        if not (practice or purpose or not_personal):    # skip unannotated rows
             continue
         who = (r.get("annotator") or "").strip() or annotator
         if not who:
@@ -54,6 +59,8 @@ def ingest_sheet(sheet_csv: str, out_json: str, annotator: Optional[str] = None,
         entry = {"practice": practice, "purpose": purpose, "label_source": "human",
                  "annotator": who, "confidence": CONFIDENCE_SCALE[conf],
                  "notes": (r.get("notes") or "").strip(), "schema_version": PACT_SCHEMA_VERSION}
+        if not_personal:
+            entry["not_personal"] = True
         validate_label(entry)
         labels[r["prcs_id"]] = entry
     out = {**load_json(out_json), **labels} if merge and Path(out_json).exists() else labels

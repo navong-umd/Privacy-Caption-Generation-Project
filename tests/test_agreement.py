@@ -141,3 +141,14 @@ def test_llm_labeler_refuses_the_offline_mock(dataset_dir, tmp_path, monkeypatch
                                       "--out", str(tmp_path / "o.json"), "--provider", "mock", "--budget-usd", "1"])
     with pytest.raises(SystemExit, match="real model"):
         llm_label.main()
+
+
+def test_not_personal_is_scored_separately_from_pact_labels():
+    np_item = {"practice": [], "purpose": [], "not_personal": True}
+    a = {**A, "p5": np_item, "p6": np_item}
+    b = {**A, "p5": np_item, "p6": _lab(["Collecting"], ["Functionality"])}
+    res = pairwise(a, b)
+    assert res["n_items"] == 6 and res["n_personal_items"] == 4      # p5, p6 excluded from PAcT
+    assert res["not_personal"]["raw_agreement"] == pytest.approx(5 / 6, abs=1e-4)
+    assert res["labels"]["practice_Sharing"] == pairwise(A, A)["labels"]["practice_Sharing"]
+    assert res["exact_match"] == pytest.approx(5 / 6, abs=1e-4)

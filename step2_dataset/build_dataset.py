@@ -56,6 +56,8 @@ def _apply_labels(prcs: List[dict], labeler: WeakLabeler,
             labels = {"practice": [l for l in PRACTICE_LABELS if l in h.get("practice", [])],
                       "purpose": [l for l in PURPOSE_LABELS if l in h.get("purpose", [])],
                       "label_source": src, "weak_banner": label_banner(src)}
+            if h.get("not_personal"):
+                labels["not_personal"] = True
         else:
             labels = labeler.label(p)
         out.append({**p, "labels": labels})
@@ -97,13 +99,13 @@ def _pin_test_ids(records: List[dict], test_ids: Set[str], group_key: str) -> tu
 def _grouped_splits(records: List[dict], cfg: dict,
                     held_out: Optional[Set[str]] = None) -> Dict[str, List[str]]:
     """Assign whole APK groups to train/val/test so no app leaks across splits.
-    If splits.test_app (or `held_out`) is set, those apps are pinned to test and the rest split
-    into train/val."""
+    If splits.test_app (one app or a comma-separated list) or `held_out` is set, those apps are
+    pinned to test and the rest split into train/val."""
     sc = cfg.get("splits", {})
     seed = sc.get("seed", 13)
     ratios = sc.get("ratios", {"train": 0.7, "val": 0.15, "test": 0.15})
     group_key = sc.get("group_by", "app_package")
-    test_apps = set(held_out or ([sc["test_app"]] if sc.get("test_app") else []))
+    test_apps = set(held_out or (str(sc["test_app"]).split(",") if sc.get("test_app") else []))
 
     groups: Dict[str, List[str]] = {}
     for r in records:
@@ -173,7 +175,8 @@ def build_dataset(prcs_dir: str, out_dir: str, config: Optional[str] = None,
                   test_cap: Optional[int] = None, test_ids: Optional[List[str]] = None) -> dict:
     """Build the ADPPG dataset; returns a summary dict.
 
-    test_app pins one app as the held-out test split; test_cap subsamples it to that many flows.
+    test_app pins one app (or a comma-separated list) as the held-out test split; test_cap
+    subsamples each of those apps to that many flows.
     test_ids pins the test split to exactly those PRCS (e.g. the annotated set)."""
     cfg = load_yaml(config or REPO_ROOT / "configs" / "weak_labels.yaml")
     if test_app:
@@ -187,8 +190,9 @@ def build_dataset(prcs_dir: str, out_dir: str, config: Optional[str] = None,
     prcs = _load_prcs(Path(prcs_dir))
     records = _apply_labels(prcs, labeler, overrides)
     if test_app and test_cap:
-        records = _subsample_test_app(records, test_app, test_cap,
-                                      cfg.get("splits", {}).get("seed", 13))
+        for app in test_app.split(","):
+            records = _subsample_test_app(records, app, test_cap,
+                                          cfg.get("splits", {}).get("seed", 13))
     held_out = None
     if test_ids:
         group_key = cfg.get("splits", {}).get("group_by", "app_package")
@@ -221,7 +225,7 @@ def main() -> None:
     ap.add_argument("--human-labels", default="data/dataset/human_labels.json",
                     help="optional label overrides (human or llm, each tagged); used if the file exists")
     ap.add_argument("--test-app", default=None,
-                    help="pin this app_package as the held-out test split")
+                    help="pin this app_package (or a comma-separated list) as the held-out test split")
     ap.add_argument("--test-cap", type=int, default=None,
                     help="subsample the test app to this many flows (small enough to hand-label)")
     ap.add_argument("--test-ids", default=None,
