@@ -1,4 +1,4 @@
-"""Phase 12: every fusion-ablation arm produces the expected featurization."""
+"""RGCN arms derive from the canonical matrix and produce the expected featurization."""
 from __future__ import annotations
 
 import pytest
@@ -8,16 +8,11 @@ pytest.importorskip("torch_geometric")
 
 import torch
 
-from step2_convgnn.arms import (
-    ARM_CODE,
-    ARM_CODE_GRAPH,
-    ARM_CODE_GRAPH_KNOWLEDGE,
-    ARM_GRAPH,
-    FUSION_ARMS,
-    arm_to_flags,
-    record_to_data_for_arm,
-)
+from pplib.experiment_matrix import CLASSIFICATION_ARMS, EXP_ID, FINAL_ARMS, arm_spec
+from step2_convgnn.arms import FUSION_ARMS, arm_to_flags, record_to_data_for_arm
 from step2_convgnn.data import FEAT_DIM, TOKEN_HOOK_DIM
+
+TOKEN_BASE = FEAT_DIM - TOKEN_HOOK_DIM
 
 
 def _stub_record() -> dict:
@@ -41,69 +36,58 @@ def _stub_record() -> dict:
     }
 
 
-def test_canonical_arm_names_match_the_plan():
-    assert FUSION_ARMS == ("code", "graph", "code_graph", "code_graph_knowledge")
+def test_fusion_arms_are_the_matrix_classification_arms():
+    assert FUSION_ARMS == CLASSIFICATION_ARMS == ("apg", "apg_code", "ppg", "ppg_code")
+    assert len(FINAL_ARMS) == 10
+    assert [EXP_ID[a] for a in FUSION_ARMS] == ["EXP001", "EXP002", "EXP003", "EXP004"]
 
 
-def test_code_arm_is_not_an_rgcn_configuration():
-    with pytest.raises(ValueError, match="TfIdfBaseline"):
-        arm_to_flags(ARM_CODE)
+def test_arm_flags_match_the_matrix_and_are_distinct():
+    for arm in FUSION_ARMS:
+        f = arm_spec(arm).flags
+        assert arm_to_flags(arm) == (f["privacy_features"], f["token_features"])
+    assert arm_to_flags("apg") == (False, False)
+    assert arm_to_flags("apg_code") == (False, True)
+    assert arm_to_flags("ppg") == (True, False)
+    assert arm_to_flags("ppg_code") == (True, True)
+    assert len({arm_to_flags(a) for a in FUSION_ARMS}) == 4
 
 
-def test_unknown_arm_rejected():
+@pytest.mark.parametrize("arm", ["rule", "tfidf"])
+def test_baseline_arms_are_not_rgcn_configurations(arm):
+    with pytest.raises(ValueError, match="baselines"):
+        arm_to_flags(arm)
+
+
+@pytest.mark.parametrize("arm", ["bogus_arm", "cap_code", "ppg_knowledge"])
+def test_unknown_arm_rejected(arm):
     with pytest.raises(ValueError, match="unknown arm"):
-        arm_to_flags("bogus_arm")
+        arm_to_flags(arm)
 
 
-def test_arm_flags_table():
-    assert arm_to_flags(ARM_GRAPH) == (False, False)
-    assert arm_to_flags(ARM_CODE_GRAPH) == (False, True)
-    assert arm_to_flags(ARM_CODE_GRAPH_KNOWLEDGE) == (True, True)
+def _blocks(arm):
+    x = record_to_data_for_arm(_stub_record(), arm).x
+    privacy = any(bool(torch.any(row[:TOKEN_BASE] != 0)) for row in x)
+    tokens = any(bool(torch.any(row[TOKEN_BASE:] != 0)) for row in x)
+    return privacy, tokens
 
 
-def test_graph_arm_zeroes_the_privacy_and_token_blocks():
-    data = record_to_data_for_arm(_stub_record(), ARM_GRAPH)
-    token_base = FEAT_DIM - TOKEN_HOOK_DIM
-    for row in data.x:
-        # privacy block (indices 0..token_base-1) all zero
-        assert torch.all(row[:token_base] == 0)
-        # token block all zero
-        assert torch.all(row[token_base:] == 0)
-
-
-def test_code_graph_arm_populates_only_the_token_block():
-    data = record_to_data_for_arm(_stub_record(), ARM_CODE_GRAPH)
-    token_base = FEAT_DIM - TOKEN_HOOK_DIM
-    # privacy block still zero
-    for row in data.x:
-        assert torch.all(row[:token_base] == 0)
-    # some node has a nonzero token block (both stub nodes carry code+callee text)
-    assert any(bool(torch.any(row[token_base:] > 0)) for row in data.x)
-
-
-def test_code_graph_knowledge_arm_populates_both_blocks():
-    data = record_to_data_for_arm(_stub_record(), ARM_CODE_GRAPH_KNOWLEDGE)
-    token_base = FEAT_DIM - TOKEN_HOOK_DIM
-    # privacy block has at least one nonzero row (Source and Sink stubs both light up)
-    assert any(bool(torch.any(row[:token_base] > 0)) for row in data.x)
-    # token block populated
-    assert any(bool(torch.any(row[token_base:] > 0)) for row in data.x)
+@pytest.mark.parametrize("arm", ["apg", "apg_code", "ppg", "ppg_code"])
+def test_each_arm_populates_exactly_its_feature_blocks(arm):
+    assert _blocks(arm) == arm_to_flags(arm)
 
 
 def test_arms_produce_distinct_feature_matrices():
-    """The three RGCN arms must not produce identical x tensors on the same record."""
-    a = record_to_data_for_arm(_stub_record(), ARM_GRAPH).x
-    b = record_to_data_for_arm(_stub_record(), ARM_CODE_GRAPH).x
-    c = record_to_data_for_arm(_stub_record(), ARM_CODE_GRAPH_KNOWLEDGE).x
-    assert not torch.equal(a, b)
-    assert not torch.equal(a, c)
-    assert not torch.equal(b, c)
+    xs = [record_to_data_for_arm(_stub_record(), a).x for a in FUSION_ARMS]
+    for i in range(len(xs)):
+        for j in range(i + 1, len(xs)):
+            assert not torch.equal(xs[i], xs[j])
 
 
 def test_edge_and_type_encoding_invariant_across_arms():
     """Only x changes across arms; edges and node types stay the same."""
-    a = record_to_data_for_arm(_stub_record(), ARM_GRAPH)
-    b = record_to_data_for_arm(_stub_record(), ARM_CODE_GRAPH_KNOWLEDGE)
+    a = record_to_data_for_arm(_stub_record(), "apg")
+    b = record_to_data_for_arm(_stub_record(), "ppg_code")
     assert torch.equal(a.edge_index, b.edge_index)
     assert torch.equal(a.edge_type, b.edge_type)
     assert torch.equal(a.node_type, b.node_type)

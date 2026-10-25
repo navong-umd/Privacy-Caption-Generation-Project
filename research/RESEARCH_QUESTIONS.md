@@ -15,7 +15,7 @@ Broken down:
 ## Q2. Which piece of the graph carries the signal?
 
 - Formal: does structure alone (`apg`) beat text? Does the KB overlay (`ppg` vs `apg`) add on top? Does the token channel (`ppg_code` vs `apg`) add on top? Does combining them (`ppg_code_knowledge`) add over the union?
-- Instrument: the eight-arm matrix in [FINAL_EXPERIMENTS.md](FINAL_EXPERIMENTS.md).
+- Instrument: the ten-arm matrix in [FINAL_EXPERIMENTS.md](FINAL_EXPERIMENTS.md).
 
 ## Q3. Which evidence representation produces the strongest privacy caption?
 

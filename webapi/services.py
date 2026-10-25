@@ -354,5 +354,5 @@ def experiments_status() -> Dict[str, Any]:
                 "note": "Experiment runs logged to experiments/index.jsonl."}
     return {
         "available": False, "logged_runs": 0,
-        "note": "No experiment runs are logged yet. The final eight-arm matrix and human evaluation are reserved for a budget-approved run; numbers appear here only from real manifests.",
+        "note": "No experiment runs are logged yet. The ten-arm matrix and human evaluation are reserved for a budget-approved run; numbers appear here only from real manifests.",
     }

@@ -17,7 +17,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-EXPERIMENT_SCHEMA_VERSION = "1.0.0"
+EXPERIMENT_SCHEMA_VERSION = "1.1.0"
 MANIFEST_FILENAME = "manifest.json"
 INDEX_FILENAME = "index.jsonl"
 
@@ -42,6 +42,9 @@ class ExperimentRun:
     metrics:        arbitrary dict of scalar metrics (e.g. {'practice_macro_f1': 0.71}).
     artifacts:      list of file paths produced (relative to the run directory).
     notes:          free-form annotator note.
+    banner:         schema banner when the test labels are not all human ('' otherwise).
+    test_set_digest: pplib.testset.digest_test_set of the split the run was scored on.
+    seeds:          every seed the run aggregates (empty for single-run arms).
     """
 
     exp_id: str
@@ -54,6 +57,9 @@ class ExperimentRun:
     artifacts: List[str] = field(default_factory=list)
     model_version: str = ""
     notes: str = ""
+    banner: str = ""
+    test_set_digest: str = ""
+    seeds: List[int] = field(default_factory=list)
     schema_version: str = EXPERIMENT_SCHEMA_VERSION
 
     def to_dict(self) -> Dict[str, Any]:

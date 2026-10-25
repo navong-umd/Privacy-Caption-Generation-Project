@@ -49,23 +49,48 @@ def _pos_weight(graphs: List, attr: str, n_labels: int) -> torch.Tensor:
     return w.clamp(0.1, 10.0)
 
 
+THRESHOLD = 0.5
+
+
 @torch.no_grad()
-def _predict(model, loader, device) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _scores(model, loader, device) -> Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """(prcs_ids, practice probs, purpose probs, practice gold, purpose gold) over the loader."""
     model.eval()
-    yp_t, yp_p, yt_t, yt_p = [], [], [], []
+    ids, pr_t, pu_t, yt_t, yt_p = [], [], [], [], []
     for batch in loader:
         batch = batch.to(device)
         lp, lu = model(batch)
-        yp_t.append((torch.sigmoid(lp) > 0.5).int().cpu().numpy())
-        yp_p.append((torch.sigmoid(lu) > 0.5).int().cpu().numpy())
+        ids.extend(batch.prcs_id)
+        pr_t.append(torch.sigmoid(lp).cpu().numpy())
+        pu_t.append(torch.sigmoid(lu).cpu().numpy())
         yt_t.append(batch.y_practice.int().cpu().numpy())
         yt_p.append(batch.y_purpose.int().cpu().numpy())
-    cat = lambda xs, d: np.concatenate(xs) if xs else np.zeros((0, d), dtype=int)
-    return (cat(yt_t, 4), cat(yp_t, 4), cat(yt_p, 4), cat(yp_p, 4))
+    cat = lambda xs, dt: np.concatenate(xs) if xs else np.zeros((0, 4), dtype=dt)
+    return ids, cat(pr_t, float), cat(pu_t, float), cat(yt_t, int), cat(yt_p, int)
+
+
+def _predict(model, loader, device) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    _, pr, pu, yt_pr, yt_pu = _scores(model, loader, device)
+    return yt_pr, (pr > THRESHOLD).astype(int), yt_pu, (pu > THRESHOLD).astype(int)
+
+
+def _item_predictions(ids, prob_pr, prob_pu) -> List[dict]:
+    """One row per test item: thresholded labels plus the probabilities they came from."""
+    rows = []
+    for pid, pr, pu in zip(ids, prob_pr, prob_pu):
+        rows.append({"prcs_id": pid,
+                     "practice": [l for l, p in zip(PRACTICE_LABELS, pr) if p > THRESHOLD],
+                     "purpose": [l for l, p in zip(PURPOSE_LABELS, pu) if p > THRESHOLD],
+                     "practice_prob": [round(float(p), 6) for p in pr],
+                     "purpose_prob": [round(float(p), 6) for p in pu]})
+    return rows
 
 
 def _evaluate(model, loader, device) -> Dict[str, float]:
-    yt_pr, yp_pr, yt_pu, yp_pu = _predict(model, loader, device)
+    return _metrics(*_predict(model, loader, device))
+
+
+def _metrics(yt_pr, yp_pr, yt_pu, yp_pu) -> Dict[str, float]:
     m = {}
     m.update(multilabel_metrics(yt_pr, yp_pr, PRACTICE_LABELS, "practice"))
     m.update(multilabel_metrics(yt_pu, yp_pu, PURPOSE_LABELS, "purpose"))
@@ -75,10 +100,15 @@ def _evaluate(model, loader, device) -> Dict[str, float]:
 
 def train(config: str, dataset_dir: str, out_dir: str | None = None,
           epochs: int | None = None, privacy_features: bool = True,
-          token_features: bool | None = None) -> Dict:
+          token_features: bool | None = None, seed: int | None = None) -> Dict:
+    """Train on the train split, early-stop on val, score test at a fixed 0.5 threshold.
+
+    `seed` overrides train.seed from the config. Returns test metrics plus per-item test
+    `predictions` (labels and probabilities) so callers never re-score with another featurization."""
     cfg = load_yaml(config)
     tc = cfg["train"]
-    set_seed(tc["seed"])
+    seed = tc["seed"] if seed is None else seed
+    set_seed(seed)
     device = torch.device("cpu")
     out = ensure_dir(out_dir or cfg["paths"]["out_dir"])
 
@@ -143,7 +173,8 @@ def train(config: str, dataset_dir: str, out_dir: str | None = None,
         model.load_state_dict(best_state)
     torch.save({"state_dict": model.state_dict(), "config": cfg}, out / "best.pt")
 
-    test_m = _evaluate(model, test_loader, device)
+    ids, prob_pr, prob_pu, yt_pr, yt_pu = _scores(model, test_loader, device)
+    test_m = _metrics(yt_pr, (prob_pr > THRESHOLD).astype(int), yt_pu, (prob_pu > THRESHOLD).astype(int))
     # write logs
     with open(out / "train_log.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(log_rows[0].keys()))
@@ -157,7 +188,8 @@ def train(config: str, dataset_dir: str, out_dir: str | None = None,
             w.writerow([k, round(v, 4)])
 
     _print_report(test_m, is_weak, len(splits["train"]), len(splits["test"]))
-    return {"test": test_m, "is_weak": is_weak, "best_val_macro_f1": best_metric}
+    return {"test": test_m, "is_weak": is_weak, "best_val_macro_f1": best_metric, "seed": seed,
+            "threshold": THRESHOLD, "predictions": _item_predictions(ids, prob_pr, prob_pu)}
 
 
 def _print_report(m: Dict[str, float], is_weak: bool, n_train: int, n_test: int) -> None:
@@ -179,8 +211,9 @@ def main() -> None:
     ap.add_argument("--dataset", default="data/dataset")
     ap.add_argument("--out", default=None)
     ap.add_argument("--epochs", type=int, default=None)
+    ap.add_argument("--seed", type=int, default=None, help="override train.seed from the config")
     args = ap.parse_args()
-    train(args.config, args.dataset, args.out, args.epochs)
+    train(args.config, args.dataset, args.out, args.epochs, seed=args.seed)
 
 
 if __name__ == "__main__":

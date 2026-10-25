@@ -1,9 +1,11 @@
-"""Phase 14: A-F condition builders project the right evidence subset."""
+"""Phase 14: A-G condition builders project the right evidence subset."""
 from __future__ import annotations
 
 import pytest
 
+from step3_caption.budget import Budget
 from step3_caption.experiments import (
+    BUDGET_REFUSED,
     CONDITIONS,
     CONDITION_LABELS,
     ConditionResult,
@@ -59,7 +61,7 @@ class _FailingProvider:
 
 
 def test_conditions_and_labels_match_the_plan():
-    assert CONDITIONS == ("A", "B", "C", "D", "E", "F")
+    assert CONDITIONS == ("A", "B", "C", "D", "E", "F", "G")
     for c in CONDITIONS:
         assert c in CONDITION_LABELS
 
@@ -143,9 +145,67 @@ def test_run_condition_never_raises_on_provider_error():
     assert r.condition == "A"
 
 
-def test_run_all_conditions_returns_one_result_per_condition():
+def test_run_all_conditions_skips_G_without_predictions():
     results = run_all_conditions(FULL_PRCS, _StubProvider())
+    assert [r.condition for r in results] == ["A", "B", "C", "D", "E", "F"]
+
+
+def test_run_all_conditions_returns_one_result_per_condition_with_predictions():
+    results = run_all_conditions(FULL_PRCS, _StubProvider(), predicted=PREDICTED)
     assert [r.condition for r in results] == list(CONDITIONS)
+
+
+PREDICTED = {"practice": ["Processing"], "purpose": ["Advertisement", "Analytics"]}
+
+
+def test_condition_G_uses_predicted_labels_not_gold():
+    assert PREDICTED["practice"] != FULL_PRCS["labels"]["practice"]
+    ev = build_evidence(FULL_PRCS, "G", predicted=PREDICTED)
+    assert ev["practice"] == PREDICTED["practice"]
+    assert ev["purpose"] == PREDICTED["purpose"]
+    c = build_evidence(FULL_PRCS, "C")
+    assert {k: v for k, v in ev.items() if k not in ("practice", "purpose")} == c
+
+
+def test_condition_G_never_reads_rec_labels():
+    class _Exploding(dict):
+        def __getitem__(self, k):
+            if k == "labels":
+                raise AssertionError("condition G read rec['labels']")
+            return super().__getitem__(k)
+
+        def get(self, k, default=None):
+            if k == "labels":
+                raise AssertionError("condition G read rec['labels']")
+            return super().get(k, default)
+
+    ev = build_evidence(_Exploding(FULL_PRCS), "G", predicted=PREDICTED)
+    assert ev["purpose"] == PREDICTED["purpose"]
+
+
+def test_condition_G_without_predictions_raises():
+    with pytest.raises(ValueError, match="predicted labels"):
+        build_evidence(FULL_PRCS, "G")
+
+
+def test_run_condition_respects_the_budget():
+    class _Priced(_StubProvider):
+        calls = 0
+
+        def generate(self, prompt, evidence):
+            _Priced.calls += 1
+            return super().generate(prompt, evidence)
+
+    prompt_len = len(build_prompt("A", build_evidence(FULL_PRCS, "A")).encode("utf-8"))
+    one_call = (prompt_len + 64) * 1.0 / 1e6 + 10 * 1.0 / 1e6
+    budget = Budget(limit_usd=one_call * 1.5, price_in_per_mtok=1.0, price_out_per_mtok=1.0,
+                    max_tokens=10)
+    first = run_condition(FULL_PRCS, "A", _Priced(), budget=budget)
+    second = run_condition(FULL_PRCS, "A", _Priced(), budget=budget)
+    assert first.error == "" and first.caption
+    assert second.error == BUDGET_REFUSED and second.caption == ""
+    assert _Priced.calls == 1
+    assert budget.summary()["stopped_by_budget"] is True
 
 
 def test_to_dict_is_json_ready():

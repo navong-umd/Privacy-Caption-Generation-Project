@@ -37,7 +37,7 @@ def _run(exp_id="EXP001", name="rgcn full ppg baseline") -> ExperimentRun:
 
 
 def test_schema_version_pinned():
-    assert EXPERIMENT_SCHEMA_VERSION == "1.0.0"
+    assert EXPERIMENT_SCHEMA_VERSION == "1.1.0"
 
 
 def test_validate_accepts_valid_record():

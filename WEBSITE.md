@@ -69,5 +69,5 @@ For a production deployment where the API lives on another origin, set
 - The backend never writes to the pipeline outputs.
 - Some committed artifacts contain double-encoded characters; the API repairs the
   common cases on read so the site renders clean text.
-- Human evaluation and the eight-arm experiment matrix are reserved; the site shows
+- Human evaluation and the ten-arm experiment matrix are reserved; the site shows
   their status honestly rather than placeholder numbers.

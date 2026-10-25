@@ -38,7 +38,7 @@ Every limitation below is a real gap in this repository at the end of the Phase 
 ## Scope reservations that are not bugs
 
 - **Human evaluation is deferred to the final gate.** Every automated metric explicitly stops short of it.
-- **`FINAL_EXPERIMENTS.md::plan_runs` produces empty metrics** by design. Numbers appear only in real `manifest.json` files.
+- **`pplib.experiment_matrix.plan_runs` produces empty metrics** by design. Numbers appear only in real `manifest.json` files.
 - **The UI is not the research.** `step4_app` is a static site meant for reader inspection, not a research artifact by itself.
 - **`data/apg/` and other empty placeholders remain on disk.** Phase 22 archive moves (proposed in [CODEBASE_ARCHITECTURE.md §6](CODEBASE_ARCHITECTURE.md#6-recommended-architecture)) are not landed in this documentation waterfall; they belong to a separate refactor pass.
 
@@ -50,5 +50,5 @@ Every limitation below is a real gap in this repository at the end of the Phase 
 ## What is not a limitation
 
 - The synthetic fixtures. They exist to make CI reproducible; every experiment quotes numbers from real corpora, not from fixtures.
-- The two-arm ablation in `step2_convgnn/ablation.py`. It answers "does the overlay help" cleanly; the eight-arm matrix is where the broader question lives.
+- The two-arm ablation in `step2_convgnn/ablation.py`. It answers "does the overlay help" cleanly; the ten-arm matrix is where the broader question lives.
 - The `research/` documentation structure itself. If a future contributor disagrees with the schema, editing the module docs and the tests is a single-file change.
