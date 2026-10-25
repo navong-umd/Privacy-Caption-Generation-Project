@@ -1,50 +1,38 @@
 """
-Purpose: Fusion-ablation arms mapped to concrete featurization flags (Phase 12).
+Purpose: RGCN featurization arms, derived from the canonical matrix in pplib/experiment_matrix.py.
 Input:   an ADPPG record.
-Output:  a PyG Data for the given arm, or the (privacy_features, token_features) flags
-         that arm corresponds to.
+Output:  a PyG Data for the given arm, or the (privacy_features, token_features) flags of that arm.
 
-The plan's Phase 12 asks for four comparison arms:
-    code                       code-only baseline; ignores the graph entirely
-    graph                      graph structure only, no privacy overlay, no code tokens
-    code_graph                 graph structure + code tokens (hashing trick over statement text)
-    code_graph_knowledge       graph structure + code tokens + privacy overlay from the KB
-
-All four map onto the two knobs already exposed by step2_convgnn.data.record_to_data:
-privacy_features (the knowledge-base signal) and token_features (the code signal).
-The 'code' arm is not RGCN-based; it goes through the TfIdfBaseline in step3_caption.baselines.
+The four RGCN arms are a 2x2 over the two knobs record_to_data exposes:
+    apg        neither the PPG privacy overlay nor statement tokens
+    apg_code   statement tokens (hashing trick over statement text) only
+    ppg        PPG privacy overlay only
+    ppg_code   both (the full model)
+The text-only and rule baselines (tfidf, rule) are not RGCN arms; they live in step3_caption.baselines.
 """
 from __future__ import annotations
 
 from typing import Dict, Tuple
 
+from pplib.experiment_matrix import BASELINE_ARMS, CLASSIFICATION_ARMS, arm_spec
 from step2_convgnn.data import record_to_data
 
-# Canonical arm names. Every consumer must use these strings so aggregated metrics tables line up.
-ARM_CODE = "code"
-ARM_GRAPH = "graph"
-ARM_CODE_GRAPH = "code_graph"
-ARM_CODE_GRAPH_KNOWLEDGE = "code_graph_knowledge"
-FUSION_ARMS = (ARM_CODE, ARM_GRAPH, ARM_CODE_GRAPH, ARM_CODE_GRAPH_KNOWLEDGE)
+FUSION_ARMS = CLASSIFICATION_ARMS
 
-# Which record_to_data flags correspond to each RGCN arm. The 'code' arm is handled elsewhere.
 _ARM_FLAGS: Dict[str, Tuple[bool, bool]] = {
-    ARM_GRAPH:                 (False, False),   # privacy_features, token_features
-    ARM_CODE_GRAPH:            (False, True),
-    ARM_CODE_GRAPH_KNOWLEDGE:  (True,  True),
+    arm: (arm_spec(arm).flags["privacy_features"], arm_spec(arm).flags["token_features"])
+    for arm in FUSION_ARMS
 }
 
 
 def arm_to_flags(arm: str) -> Tuple[bool, bool]:
     """Return (privacy_features, token_features) for one of the RGCN arms.
 
-    Raises ValueError for the 'code' arm (which is not an RGCN configuration) or an unknown arm.
+    Raises ValueError for a baseline arm (not an RGCN configuration) or any other arm.
     """
-    if arm == ARM_CODE:
-        raise ValueError(
-            "arm 'code' is text-only and does not use record_to_data; "
-            "use step3_caption.baselines.TfIdfBaseline instead"
-        )
+    if arm in BASELINE_ARMS:
+        raise ValueError(f"arm {arm!r} is not an RGCN configuration; "
+                         "use step3_caption.baselines (RuleBaseline / TfIdfBaseline) instead")
     if arm not in _ARM_FLAGS:
         raise ValueError(f"unknown arm {arm!r}; expected one of {FUSION_ARMS}")
     return _ARM_FLAGS[arm]
