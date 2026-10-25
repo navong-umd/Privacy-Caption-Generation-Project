@@ -19,6 +19,7 @@ Numbers are not in this index. Numbers live only in `manifest.json` files under 
 11. [PACT_SCHEMA.md](PACT_SCHEMA.md) — Practice + Purpose labels.
 12. [DATASET.md](DATASET.md) — ADPPG dataset assembly and leak-safe splits.
     - [ANNOTATION_CODEBOOK.md](ANNOTATION_CODEBOOK.md) — how the two annotators label the PAcT test set.
+    - [ANNOTATION_GUIDE.md](ANNOTATION_GUIDE.md) — step-by-step walkthrough for first-time annotators, with worked examples.
 13. [BASELINES.md](BASELINES.md) — rule and TF-IDF baselines.
 14. [GNN_CLASSIFICATION.md](GNN_CLASSIFICATION.md) — RGCN classifier.
 15. [FUSION_ABLATION.md](FUSION_ABLATION.md) — code / graph / knowledge arm matrix.

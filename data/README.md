@@ -129,7 +129,8 @@ Produces per-app `notice.md`, `policy.md`, `policy.json`.
 | Path | Purpose | Producer |
 |------|---------|----------|
 | `data/starter/`, `data/eval_run/` | Early annotation packages. Their `human_labels.json` entries were assigned by a two-pass LLM process and are tagged `label_source: llm` (`python -m step2_dataset.ingest_annotations --retag-llm <file>`); they are not human labels. | Assembled ad-hoc; loose files under `data/` (`_annot_rows.json`, `_merged_labels.json`, `_review_shortlist.csv/md`) belong to this workflow. |
-| `data/annotation_kit/` | Two-annotator kit: calibration, overlap and solo sheets + `manifest.json` (test ids). | `python -m step2_dataset.make_annotation_sheet --dataset data/corpus_run/dataset --kit data/annotation_kit` |
+| `data/corpus_g1/dataset/` | Corpus dataset with Duolingo, TikTok and Snapchat held out as the test apps (source of the annotation kit). | `python -m step2_dataset.build_dataset --prcs data/corpus_run/prcs_all --out data/corpus_g1/dataset --human-labels none --test-app com.duolingo,com.zhiliaoapp.musically,com.snapchat.android` |
+| `data/annotation_kit/` | Two-annotator kit: calibration, overlap and solo sheets + `manifest.json` (test ids). | `python -m step2_dataset.make_annotation_sheet --dataset data/corpus_g1/dataset --kit data/annotation_kit --seed 13` |
 
 ---
 
