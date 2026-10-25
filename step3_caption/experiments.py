@@ -1,20 +1,23 @@
 """
-Purpose: Phase 14 LLM experiment harness. Builds one of six evidence conditions from a
+Purpose: Phase 14 LLM experiment harness. Builds one of seven evidence conditions from a
          PRCS and records the metadata needed to compare captions across conditions.
-Input:   a PRCS record and a condition name in {'A', 'B', 'C', 'D', 'E', 'F'}.
+Input:   a PRCS record and a condition name in {'A', 'B', 'C', 'D', 'E', 'F', 'G'}.
 Output:  an evidence dict tailored to the condition, plus a ConditionResult record after a
          run that captures model, prompt, output, latency, token usage, and errors.
 
-The six conditions mirror the plan verbatim:
+The conditions:
     A - Code only
     B - Code + API
     C - Code + taint path
     D - Code + PPG (structural / relational context)
     E - Code + PPG + PAcT
     F - Full evidence package (everything the KB + PPG + PAcT know)
+    G - Code + API + taint path (C) + PAcT labels PREDICTED by the classifier. The labels are
+        passed in by the caller (the ppg_code seed-0 predictions); G never reads rec["labels"],
+        so the arm measures the pipeline as deployed rather than an oracle.
 
 Any object with a `generate(prompt, evidence)` method returning a str works as a provider; a
-GenerationResult also carries token usage. Downstream comparison is driven by which condition
+GenerationResult also carries token usage. Pass a step3_caption.budget.Budget to cap spend. Downstream comparison is driven by which condition
 wins on BLEU / ROUGE / BERTScore / LLM-as-judge in Phase 15 and by the human ratings in
 Phase 15 human eval.
 """
@@ -24,8 +27,11 @@ import time
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional
 
+from step3_caption.budget import generate_within_budget
 
-CONDITIONS = ("A", "B", "C", "D", "E", "F")
+
+CONDITIONS = ("A", "B", "C", "D", "E", "F", "G")
+PREDICTED_CONDITIONS = ("G",)          # need predicted labels from the caller
 CONDITION_LABELS: Dict[str, str] = {
     "A": "code_only",
     "B": "code_plus_api",
@@ -33,7 +39,11 @@ CONDITION_LABELS: Dict[str, str] = {
     "D": "code_plus_ppg",
     "E": "code_plus_ppg_plus_pact",
     "F": "full_evidence",
+    "G": "code_plus_taint_path_plus_predicted_pact",
 }
+
+
+BUDGET_REFUSED = "budget: call refused, limit reached"
 
 
 @dataclass
@@ -60,15 +70,19 @@ class ConditionResult:
         return asdict(self)
 
 
-def build_evidence(rec: Dict[str, Any], condition: str) -> Dict[str, Any]:
+def build_evidence(rec: Dict[str, Any], condition: str,
+                   predicted: Optional[Dict[str, List[str]]] = None) -> Dict[str, Any]:
     """Project a full PRCS record onto the evidence subset that condition allows.
 
-    condition must be one of CONDITIONS. Raises ValueError otherwise.
+    condition must be one of CONDITIONS. Raises ValueError otherwise. Condition G requires
+    `predicted` ({"practice": [...], "purpose": [...]}) and takes its PAcT labels only from it.
     Any consumer of the return value must NOT read fields outside the returned dict,
     or the ablation is meaningless.
     """
     if condition not in CONDITIONS:
         raise ValueError(f"unknown condition {condition!r}, expected one of {CONDITIONS}")
+    if condition in PREDICTED_CONDITIONS and predicted is None:
+        raise ValueError(f"condition {condition} needs predicted labels; it never reads rec['labels']")
 
     ev: Dict[str, Any] = {
         "prcs_id": rec.get("prcs_id", ""),
@@ -78,11 +92,11 @@ def build_evidence(rec: Dict[str, Any], condition: str) -> Dict[str, Any]:
     if condition == "A":                       # code only
         return ev
 
-    if condition in ("B", "C", "D", "E", "F"):  # add API endpoints
+    if condition in ("B", "C", "D", "E", "F", "G"):  # add API endpoints
         ev["source_api"] = rec.get("source_api", "")
         ev["sink_api"] = rec.get("sink_api", "")
 
-    if condition in ("C", "F"):                # add taint path
+    if condition in ("C", "F", "G"):           # add taint path
         ev["taint_path"] = list(rec.get("taint_path", []))
         ev["taint_rules"] = list(rec.get("taint_rules", []))
         ev["hop_count"] = rec.get("hop_count", 0)
@@ -105,6 +119,10 @@ def build_evidence(rec: Dict[str, Any], condition: str) -> Dict[str, Any]:
         labels = rec.get("labels", {})
         ev["practice"] = list(labels.get("practice", []))
         ev["purpose"] = list(labels.get("purpose", []))
+
+    if condition == "G":                       # predicted labels, never the stored ones
+        ev["practice"] = list(predicted.get("practice", []))
+        ev["purpose"] = list(predicted.get("purpose", []))
 
     if condition == "F":                        # everything else worth knowing
         ev["app_package"] = rec.get("app_package", "")
@@ -137,19 +155,26 @@ def build_prompt(condition: str, evidence: Dict[str, Any]) -> str:
 
 
 def run_condition(rec: Dict[str, Any], condition: str, provider,
-                  temperature: Optional[float] = None) -> ConditionResult:
+                  temperature: Optional[float] = None, budget=None,
+                  predicted: Optional[Dict[str, List[str]]] = None) -> ConditionResult:
     """Call `provider.generate(prompt, evidence)` and return a ConditionResult.
 
-    Never raises: a provider error becomes a ConditionResult with `error` populated
-    (so a bad row does not sink a whole sweep across many PRCS or many conditions).
+    Never raises on a provider error: it becomes a ConditionResult with `error` populated
+    (so a bad row does not sink a whole sweep across many PRCS or many conditions). With a
+    `budget`, a call the budget refuses is not made and the error is BUDGET_REFUSED.
     """
-    evidence = build_evidence(rec, condition)
+    evidence = build_evidence(rec, condition, predicted)
     prompt = build_prompt(condition, evidence)
     started = time.perf_counter()
     caption = ""
     error = ""
     try:
-        caption = provider.generate(prompt, evidence)
+        if budget is None:
+            caption = provider.generate(prompt, evidence)
+        else:
+            caption = generate_within_budget(provider, prompt, evidence, budget)
+            if caption is None:
+                caption, error = "", BUDGET_REFUSED
     except Exception as e:                       # capture, do not raise
         error = f"{type(e).__name__}: {e}"
     elapsed = time.perf_counter() - started
@@ -175,7 +200,11 @@ def run_condition(rec: Dict[str, Any], condition: str, provider,
 
 def run_all_conditions(rec: Dict[str, Any], provider,
                        conditions: Optional[List[str]] = None,
-                       temperature: Optional[float] = None) -> List[ConditionResult]:
-    """Sweep one PRCS across the requested conditions (default: all six)."""
-    return [run_condition(rec, c, provider, temperature=temperature)
-            for c in (conditions or list(CONDITIONS))]
+                       temperature: Optional[float] = None,
+                       predicted: Optional[Dict[str, List[str]]] = None) -> List[ConditionResult]:
+    """Sweep one PRCS across the requested conditions (default: every condition the inputs allow,
+    i.e. G only when `predicted` is given)."""
+    if conditions is None:
+        conditions = [c for c in CONDITIONS if predicted is not None or c not in PREDICTED_CONDITIONS]
+    return [run_condition(rec, c, provider, temperature=temperature, predicted=predicted)
+            for c in conditions]
